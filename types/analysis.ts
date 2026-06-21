@@ -28,6 +28,7 @@ export type AnalysisResult = {
 export type ReadingRecord = {
   id: string;
   title: string;
+  citation: string;
   tags: string[];
   originalText: string;
   analysisResult: AnalysisResult | null;

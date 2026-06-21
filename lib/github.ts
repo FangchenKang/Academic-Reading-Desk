@@ -6,6 +6,10 @@ export function recordToMarkdown(record: ReadingRecord) {
   const lines: string[] = [
     `# ${record.title || "Untitled Reading"}`,
     "",
+    "## 引文信息",
+    "",
+    record.citation?.trim() || "未填写",
+    "",
     "## 学科标签",
     "",
     ...record.tags.map((tag) => `- ${tag}`),

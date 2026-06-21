@@ -17,7 +17,7 @@ export function Topbar({
   syncDisabled?: boolean;
 }) {
   return (
-    <header className="flex h-20 items-center justify-between border-b border-slate-200 bg-slate-50/80 px-8">
+    <header className="sticky top-0 z-20 flex h-20 shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50/90 px-8 backdrop-blur">
       <div>
         <p className="text-xs font-medium text-slate-500">Academic Reading Desk</p>
         <h1 className="mt-1 text-xl font-semibold text-slate-950">

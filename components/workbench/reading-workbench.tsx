@@ -11,6 +11,7 @@ import { Toast } from "@/components/shared/toast";
 import { getRecord, saveRecord } from "@/lib/db";
 import {
   createMockAnalysisResult,
+  defaultCitation,
   defaultOriginalText,
   defaultTags,
   defaultTitle
@@ -28,6 +29,7 @@ export function ReadingWorkbench() {
   const requestedRecordId = searchParams.get("recordId");
   const [recordId, setRecordId] = useState(() => createId());
   const [title, setTitle] = useState(defaultTitle);
+  const [citation, setCitation] = useState(defaultCitation);
   const [tags, setTags] = useState<string[]>(defaultTags);
   const [originalText, setOriginalText] = useState(defaultOriginalText);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(() =>
@@ -67,6 +69,7 @@ export function ReadingWorkbench() {
 
         setRecordId(record.id);
         setTitle(record.title);
+        setCitation(record.citation ?? "");
         setTags(record.tags);
         setOriginalText(record.originalText);
         setAnalysisResult(record.analysisResult);
@@ -91,6 +94,7 @@ export function ReadingWorkbench() {
     (updatedAt = new Date().toISOString()): ReadingRecord => ({
       id: recordId,
       title,
+      citation,
       tags,
       originalText,
       analysisResult,
@@ -105,6 +109,7 @@ export function ReadingWorkbench() {
       githubPath,
       originalText,
       recordId,
+      citation,
       syncedToGithub,
       tags,
       title
@@ -189,6 +194,7 @@ export function ReadingWorkbench() {
 
     setRecordId(createId());
     setTitle("");
+    setCitation("");
     setTags([]);
     setOriginalText("");
     setAnalysisResult(null);
@@ -256,13 +262,15 @@ export function ReadingWorkbench() {
 
   return (
     <AppShell
+      mainClassName="overflow-hidden"
       topbar={
         <Topbar onNew={handleNew} onSync={handleSync} syncing={syncing} />
       }
     >
-      <div className="grid h-[calc(100vh-8rem)] grid-cols-[minmax(420px,0.43fr)_minmax(540px,0.57fr)] gap-5">
+      <div className="grid h-full min-h-0 grid-cols-[minmax(420px,0.43fr)_minmax(540px,0.57fr)] gap-5 overflow-hidden">
         <InputPanel
           title={title}
+          citation={citation}
           tags={tags}
           originalText={originalText}
           wordCount={wordCount}
@@ -273,6 +281,10 @@ export function ReadingWorkbench() {
           onTitleChange={(value) => {
             setSyncedToGithub(false);
             setTitle(value);
+          }}
+          onCitationChange={(value) => {
+            setSyncedToGithub(false);
+            setCitation(value);
           }}
           onTagsChange={(value) => {
             setSyncedToGithub(false);

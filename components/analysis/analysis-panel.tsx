@@ -27,8 +27,8 @@ export function AnalysisPanel({
   onCopied: (message: string) => void;
 }) {
   return (
-    <section className="flex h-full flex-col rounded-lg border border-slate-200 bg-white shadow-soft">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-soft">
+      <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur">
         <div>
           <p className="text-xs font-medium text-slate-500">AI Reading Output</p>
           <h2 className="mt-1 text-lg font-semibold text-slate-950">
@@ -46,7 +46,7 @@ export function AnalysisPanel({
         </Button>
       </div>
 
-      <div className="thin-scrollbar flex-1 overflow-y-auto bg-slate-50 px-5 py-5">
+      <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto bg-slate-50 px-5 py-5">
         {loading ? <AnalysisLoading /> : null}
 
         {!loading && !result ? (

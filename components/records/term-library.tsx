@@ -26,6 +26,8 @@ export function TermLibrary() {
         : [
             {
               title: "Algorithmic Governance and Public Trust",
+              citation:
+                "Author, A. A. (2024). Algorithmic Governance and Public Trust. Journal of Public Administration.",
               analysisResult: createMockAnalysisResult()
             } as ReadingRecord
           ];

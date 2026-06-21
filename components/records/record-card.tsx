@@ -21,6 +21,11 @@ export function RecordCard({
           <p className="truncate text-base font-semibold text-slate-950">
             {record.title || "Untitled Reading"}
           </p>
+          {record.citation ? (
+            <p className="mt-1 truncate text-xs text-slate-400">
+              {record.citation}
+            </p>
+          ) : null}
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
             {record.originalText || "暂无原文内容"}
           </p>

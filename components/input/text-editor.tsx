@@ -27,10 +27,12 @@ export function TextEditor({
       <Textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-[315px] resize-none text-[15px]"
+        className="min-h-[260px] max-h-[46vh] resize-y overflow-y-auto text-[15px]"
         placeholder="Paste an English abstract or paragraph here..."
       />
-      <p className="mt-2 text-xs text-slate-500">字数统计：{wordCount} 词</p>
+      <p className="mt-2 text-right text-xs text-slate-500">
+        字数统计：{wordCount} 词
+      </p>
     </div>
   );
 }

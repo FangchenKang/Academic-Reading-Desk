@@ -3,6 +3,9 @@ import { createId } from "@/lib/utils";
 
 export const defaultTitle = "Algorithmic Governance and Public Trust";
 
+export const defaultCitation =
+  "Author, A. A. (2024). Algorithmic Governance and Public Trust. Journal of Public Administration.";
+
 export const defaultTags = ["政治学", "公共管理", "数字治理"];
 
 export const defaultOriginalText =
@@ -138,6 +141,7 @@ export function createDefaultRecord(): ReadingRecord {
   return {
     id: createId(),
     title: defaultTitle,
+    citation: defaultCitation,
     tags: defaultTags,
     originalText: defaultOriginalText,
     analysisResult: createMockAnalysisResult(),

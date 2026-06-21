@@ -29,6 +29,8 @@ export function NoteList() {
       {
         id: "mock-note",
         title: "Algorithmic Governance and Public Trust",
+        citation:
+          "Author, A. A. (2024). Algorithmic Governance and Public Trust. Journal of Public Administration.",
         tags: ["政治学", "数字治理"],
         originalText: "",
         analysisResult: createMockAnalysisResult(),
