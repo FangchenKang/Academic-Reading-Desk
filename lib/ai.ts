@@ -1,6 +1,9 @@
 import type { AnalysisResult } from "@/types/analysis";
 import { createMockAnalysisResult } from "@/lib/mock";
 
+const defaultBaseUrl = "https://models.sjtu.edu.cn/api/v1";
+const defaultModel = "deepseek-chat";
+
 export const academicReadingSystemPrompt =
   "你是一个面向政治学、公共管理与社会科学研究者的英文学术精读助手。你的任务不是简单翻译，而是帮助研究者从英文论文段落中提取值得长期记忆的学科术语、学术短语、论文句式、段落逻辑和可复用写法。你需要特别关注政治学、公共管理、政策过程、数字治理、基层治理、组织理论、公共信任、制度分析、社会科学方法等相关表达。请输出严格 JSON，不要输出 Markdown，不要输出解释性前言。";
 
@@ -30,12 +33,166 @@ ${input.text}
 7. 输出必须是严格 JSON，字段必须完全符合指定结构，不要输出代码块标记，不要输出 Markdown。`;
 }
 
+export function hasConfiguredAiKey() {
+  return Boolean(process.env.OPENAI_API_KEY?.trim());
+}
+
 export async function analyzeAcademicText(input: {
   title: string;
   tags: string[];
   text: string;
 }): Promise<AnalysisResult> {
-  // MVP stage: keep the server boundary, but return deterministic mock data.
-  // Real OpenAI-compatible providers can be wired here without changing the UI.
-  return createMockAnalysisResult(input.title, input.tags);
+  if (!hasConfiguredAiKey()) {
+    return createMockAnalysisResult(input.title, input.tags);
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const baseUrl = (process.env.OPENAI_BASE_URL || defaultBaseUrl).replace(/\/+$/, "");
+  const model = process.env.OPENAI_MODEL || defaultModel;
+  const userPrompt = buildAcademicReadingPrompt(input);
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: academicReadingSystemPrompt
+        },
+        {
+          role: "user",
+          content: userPrompt
+        }
+      ],
+      stream: false,
+      max_tokens: 4096,
+      temperature: 0.2
+    })
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(
+      `学校 API 请求失败：${response.status} ${detail.slice(0, 180)}`
+    );
+  }
+
+  const data = (await response.json()) as ChatCompletionResponse;
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("学校 API 没有返回可解析的 message.content");
+  }
+
+  return normalizeAnalysisResult(parseAnalysisJson(content), input);
+}
+
+type ChatCompletionResponse = {
+  choices?: {
+    message?: {
+      content?: string;
+    };
+  }[];
+};
+
+function parseAnalysisJson(rawContent: string): unknown {
+  const candidates = [
+    rawContent,
+    stripMarkdownFence(rawContent),
+    extractJsonObject(rawContent)
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Try the next cleaned candidate.
+    }
+  }
+
+  throw new Error("模型返回内容不是有效 JSON");
+}
+
+function stripMarkdownFence(content: string) {
+  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return fenced?.[1]?.trim() ?? content.trim();
+}
+
+function extractJsonObject(content: string) {
+  const start = content.indexOf("{");
+  const end = content.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return "";
+  return content.slice(start, end + 1).trim();
+}
+
+function normalizeAnalysisResult(
+  value: unknown,
+  input: { title: string; tags: string[] }
+): AnalysisResult {
+  if (!isRecord(value)) {
+    throw new Error("模型返回 JSON 结构不是对象");
+  }
+
+  const now = new Date().toISOString();
+
+  return {
+    title: readString(value.title, input.title),
+    tags: readStringArray(value.tags, input.tags),
+    terms: readArray(value.terms).map((item) => {
+      const record = isRecord(item) ? item : {};
+      return {
+        term: readString(record.term),
+        translation: readString(record.translation),
+        explanation: readOptionalString(record.explanation),
+        example: readOptionalString(record.example)
+      };
+    }),
+    patterns: readArray(value.patterns).map((item) => {
+      const record = isRecord(item) ? item : {};
+      return {
+        type: readString(record.type),
+        description: readString(record.description),
+        example: readString(record.example),
+        reusableTemplate: readOptionalString(record.reusableTemplate)
+      };
+    }),
+    bilingual: readArray(value.bilingual).map((item) => {
+      const record = isRecord(item) ? item : {};
+      return {
+        en: readString(record.en),
+        zh: readString(record.zh)
+      };
+    }),
+    note: readString(value.note),
+    summary: readOptionalString(value.summary),
+    createdAt: readString(value.createdAt, now),
+    updatedAt: readString(value.updatedAt, now)
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readArray(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function readString(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function readOptionalString(value: unknown) {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readStringArray(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) return fallback;
+  const strings = value.filter((item): item is string => typeof item === "string");
+  return strings.length > 0 ? strings : fallback;
 }

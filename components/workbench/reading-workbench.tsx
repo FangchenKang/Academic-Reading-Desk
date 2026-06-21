@@ -158,11 +158,15 @@ export function ReadingWorkbench() {
         body: JSON.stringify({ title, tags, text: originalText })
       });
 
-      if (!response.ok) {
-        throw new Error("Analyze failed");
+      const payload = (await response.json()) as {
+        result?: AnalysisResult;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.result) {
+        throw new Error(payload.error ?? "解析失败，请检查 API 配置、校园网或 VPN 连接");
       }
 
-      const payload = (await response.json()) as { result: AnalysisResult };
       const now = new Date().toISOString();
       setAnalysisResult(payload.result);
       await saveRecord({
@@ -176,8 +180,13 @@ export function ReadingWorkbench() {
       setLastEditedAt(now);
       setSaveStatus("saved");
       showToast("解析完成，已保存到本地");
-    } catch {
-      showToast("解析失败，请检查 API 配置或稍后重试", "error");
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "解析失败，请检查 API 配置、校园网或 VPN 连接",
+        "error"
+      );
     } finally {
       setAnalyzing(false);
     }

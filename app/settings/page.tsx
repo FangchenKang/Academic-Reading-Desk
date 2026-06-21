@@ -19,7 +19,7 @@ export default function SettingsPage() {
           <p className="text-sm font-medium text-blue-700">Configuration</p>
           <h2 className="mt-1 text-2xl font-semibold text-slate-950">设置</h2>
           <p className="mt-2 text-sm text-slate-500">
-            当前 MVP 优先完成前端与 mock 数据。真实 API 和 GitHub 同步通过环境变量预留。
+            未配置 Key 时使用 mock 数据；配置学校 API Key 后，解析文本会调用上海交通大学本地大模型 API。
           </p>
         </div>
 
@@ -32,14 +32,14 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-semibold text-slate-950">AI 配置说明</h3>
                 <p className="text-sm text-slate-500">
-                  未配置 Key 时，系统会自动使用 mock 分析结果。
+                  本地写入 .env.local；部署时写入 Vercel 环境变量，不要提交真实 Key。
                 </p>
               </div>
             </div>
             <pre className="overflow-x-auto rounded-lg bg-slate-950 p-4 text-xs leading-6 text-slate-100">
 {`OPENAI_API_KEY=
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini`}
+OPENAI_BASE_URL=https://models.sjtu.edu.cn/api/v1
+OPENAI_MODEL=deepseek-chat`}
             </pre>
           </section>
 

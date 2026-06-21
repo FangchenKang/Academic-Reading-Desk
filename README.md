@@ -1,11 +1,12 @@
 # 学术英文精读台
 
-面向政治学、公共管理与社会科学研究者的英文学术精读工作台。当前 MVP 先完成前端界面与 mock 数据：用户可以粘贴英文论文段落，查看核心术语、重点句式、双语对照与自动笔记，并体验本地记录、页面导航与 GitHub 同步入口。
+面向政治学、公共管理与社会科学研究者的英文学术精读工作台。用户可以粘贴英文论文段落，查看核心术语、重点句式、双语对照与自动笔记，并体验本地记录、页面导航与 GitHub 同步入口。
 
 ## 功能
 
 - 桌面端横屏工作台：首页包含原文输入、学科标签、阅读模式切换和 AI 解析结果区。
-- Mock 解析结果：未配置 AI Key 时也能完整预览术语、句式、双语翻译和自动笔记。
+- Mock 兜底结果：未配置 AI Key 时也能完整预览术语、句式、双语翻译和自动笔记。
+- 上海交通大学本地大模型 API：配置 Key 后，通过 OpenAI 兼容 `chat/completions` 接口返回真实解析结果。
 - IndexedDB 本地保存：标题、标签、原文与解析结果会自动保存为学习记录。
 - 历史记录页：查看、载入和删除本地学习记录。
 - 术语库、笔记、模板、设置页面：保留后续继续开发的完整 UI 入口。
@@ -37,12 +38,14 @@ npm run dev
 cp .env.example .env.local
 ```
 
-当前阶段前端与 mock 数据优先。`OPENAI_API_KEY` 可先留空，系统会自动返回 mock 分析结果，项目可以直接预览。
+本项目可接入上海交通大学本地大模型 API。请用户自行申请学校 API Key：本地开发时只写入 `.env.local`，部署到 Vercel 时写入 Project Settings 的 Environment Variables。不要泄露 API Key，不要把真实 Key 写入代码、README 或任何提交记录；`.env.local` 必须保留在 `.gitignore` 中，不要提交到 GitHub。
+
+未配置 `OPENAI_API_KEY` 时，系统会自动返回 mock 分析结果，方便直接预览。配置 `OPENAI_API_KEY` 后，`/api/analyze` 会调用学校 API：
 
 ```env
 OPENAI_API_KEY=
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_BASE_URL=https://models.sjtu.edu.cn/api/v1
+OPENAI_MODEL=deepseek-chat
 
 GITHUB_TOKEN=
 GITHUB_OWNER=
@@ -50,11 +53,12 @@ GITHUB_REPO=
 GITHUB_BRANCH=main
 ```
 
+如果校外网络无法访问学校 API，请先确认校园网或 VPN 连接。请求失败时，前端会显示类似“解析失败，请检查 API 配置、校园网或 VPN 连接”的友好提示。
+
 GitHub 同步需要配置 `GITHUB_TOKEN`、`GITHUB_OWNER`、`GITHUB_REPO` 和 `GITHUB_BRANCH`。同步文件默认写入 `records/yyyy-mm-dd-slug-title.md`。
 
 ## 后续计划
 
-- 接入真实 OpenAI 兼容 API，并保持 mock fallback。
 - 支持 PDF 上传、Zotero 导入与文献元数据读取。
 - 建立个人术语库、Anki 卡片导出和可复用句式训练。
 - 完善 GitHub 双向同步与冲突处理。
