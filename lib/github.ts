@@ -89,7 +89,7 @@ export async function syncRecordToGithub(record: ReadingRecord) {
 
   if (!token || !owner || !repo) {
     throw new Error(
-      "GitHub 未配置，请在 .env.local 中填写 GITHUB_TOKEN、GITHUB_OWNER 和 GITHUB_REPO"
+      "GitHub 同步未启用：线上请在 Vercel Environment Variables 中填写 GITHUB_TOKEN、GITHUB_OWNER 和 GITHUB_REPO；本地开发请写入 .env.local"
     );
   }
 

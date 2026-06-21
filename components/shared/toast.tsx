@@ -1,4 +1,4 @@
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, CircleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Toast({
@@ -9,6 +9,7 @@ export function Toast({
   tone?: "success" | "error";
 }) {
   if (!message) return null;
+  const Icon = tone === "success" ? CheckCircle2 : CircleAlert;
 
   return (
     <div
@@ -19,7 +20,7 @@ export function Toast({
           : "border-red-100 text-red-700"
       )}
     >
-      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
       {message}
     </div>
   );
