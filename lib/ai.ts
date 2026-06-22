@@ -4,6 +4,46 @@ import { createMockAnalysisResult } from "@/lib/mock";
 const defaultBaseUrl = "https://models.sjtu.edu.cn/api/v1";
 const defaultModel = "deepseek-chat";
 
+export type AiAnalysisErrorCode =
+  | "api_request_failed"
+  | "empty_response"
+  | "invalid_json"
+  | "empty_result"
+  | "unknown";
+
+export class AiAnalysisError extends Error {
+  code: AiAnalysisErrorCode;
+  status?: number;
+  debugDetail?: string;
+
+  constructor(
+    code: AiAnalysisErrorCode,
+    message: string,
+    options?: { status?: number; debugDetail?: string }
+  ) {
+    super(message);
+    this.name = "AiAnalysisError";
+    this.code = code;
+    this.status = options?.status;
+    this.debugDetail = options?.debugDetail;
+  }
+}
+
+export function getAiAnalysisErrorPayload(error: unknown) {
+  if (error instanceof AiAnalysisError) {
+    return {
+      error: error.message,
+      code: error.code,
+      status: error.status
+    };
+  }
+
+  return {
+    error: "解析失败，请检查 API 配置、校园网或 VPN 连接",
+    code: "unknown" satisfies AiAnalysisErrorCode
+  };
+}
+
 export const academicReadingSystemPrompt =
   "你是一个面向政治学、公共管理与社会科学研究者的英文学术精读助手。你的任务不是简单翻译，而是帮助研究者从英文论文段落中提取值得长期记忆的学科术语、学术短语、论文句式、段落逻辑和可复用写法。你需要特别关注政治学、公共管理、政策过程、数字治理、基层治理、组织理论、公共信任、制度分析、社会科学方法等相关表达。请输出严格 JSON，不要输出 Markdown，不要输出解释性前言。";
 
@@ -51,42 +91,69 @@ export async function analyzeAcademicText(input: {
   const model = process.env.OPENAI_MODEL || defaultModel;
   const userPrompt = buildAcademicReadingPrompt(input);
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: "system",
-          content: academicReadingSystemPrompt
-        },
-        {
-          role: "user",
-          content: userPrompt
-        }
-      ],
-      stream: false,
-      max_tokens: 4096,
-      temperature: 0.2
-    })
-  });
+  let response: Response;
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(
-      `学校 API 请求失败：${response.status} ${detail.slice(0, 180)}`
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content: academicReadingSystemPrompt
+          },
+          {
+            role: "user",
+            content: userPrompt
+          }
+        ],
+        stream: false,
+        max_tokens: 4096,
+        temperature: 0.2
+      })
+    });
+  } catch (error) {
+    throw new AiAnalysisError(
+      "api_request_failed",
+      "学校 API 请求失败，请检查 API 配置、校园网或 VPN 连接。",
+      { debugDetail: error instanceof Error ? error.message : String(error) }
     );
   }
 
-  const data = (await response.json()) as ChatCompletionResponse;
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new AiAnalysisError(
+      "api_request_failed",
+      getApiFailureMessage(response.status),
+      {
+        status: response.status,
+        debugDetail: detail.slice(0, 500)
+      }
+    );
+  }
+
+  let data: ChatCompletionResponse;
+  try {
+    data = (await response.json()) as ChatCompletionResponse;
+  } catch {
+    throw new AiAnalysisError(
+      "empty_response",
+      "学校 API 返回成功，但响应不是有效 JSON，请检查模型服务返回格式。"
+    );
+  }
+
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error("学校 API 没有返回可解析的 message.content");
+    throw new AiAnalysisError(
+      "empty_response",
+      "学校 API 返回成功，但没有可解析的 message.content，请检查模型服务返回格式。"
+    );
   }
 
   return normalizeAnalysisResult(parseAnalysisJson(content), input);
@@ -115,7 +182,10 @@ function parseAnalysisJson(rawContent: string): unknown {
     }
   }
 
-  throw new Error("模型返回内容不是有效 JSON");
+  throw new AiAnalysisError(
+    "invalid_json",
+    "模型返回了内容，但不是可解析的 JSON。请稍后重试，或检查模型是否按要求输出严格 JSON。"
+  );
 }
 
 function stripMarkdownFence(content: string) {
@@ -135,44 +205,86 @@ function normalizeAnalysisResult(
   input: { title: string; tags: string[] }
 ): AnalysisResult {
   if (!isRecord(value)) {
-    throw new Error("模型返回 JSON 结构不是对象");
+    throw new AiAnalysisError(
+      "invalid_json",
+      "模型返回的 JSON 结构不是对象，无法生成精读结果。"
+    );
   }
 
   const now = new Date().toISOString();
 
-  return {
+  const result = {
     title: readString(value.title, input.title),
     tags: readStringArray(value.tags, input.tags),
-    terms: readArray(value.terms).map((item) => {
-      const record = isRecord(item) ? item : {};
-      return {
-        term: readString(record.term),
-        translation: readString(record.translation),
-        explanation: readOptionalString(record.explanation),
-        example: readOptionalString(record.example)
-      };
-    }),
-    patterns: readArray(value.patterns).map((item) => {
-      const record = isRecord(item) ? item : {};
-      return {
-        type: readString(record.type),
-        description: readString(record.description),
-        example: readString(record.example),
-        reusableTemplate: readOptionalString(record.reusableTemplate)
-      };
-    }),
-    bilingual: readArray(value.bilingual).map((item) => {
-      const record = isRecord(item) ? item : {};
-      return {
-        en: readString(record.en),
-        zh: readString(record.zh)
-      };
-    }),
+    terms: readArray(value.terms)
+      .map((item) => {
+        const record = isRecord(item) ? item : {};
+        return {
+          term: readString(record.term),
+          translation: readString(record.translation),
+          explanation: readOptionalString(record.explanation),
+          example: readOptionalString(record.example)
+        };
+      })
+      .filter((item) =>
+        [item.term, item.translation, item.explanation, item.example].some(hasText)
+      ),
+    patterns: readArray(value.patterns)
+      .map((item) => {
+        const record = isRecord(item) ? item : {};
+        return {
+          type: readString(record.type),
+          description: readString(record.description),
+          example: readString(record.example),
+          reusableTemplate: readOptionalString(record.reusableTemplate)
+        };
+      })
+      .filter((item) =>
+        [item.type, item.description, item.example, item.reusableTemplate].some(hasText)
+      ),
+    bilingual: readArray(value.bilingual)
+      .map((item) => {
+        const record = isRecord(item) ? item : {};
+        return {
+          en: readString(record.en),
+          zh: readString(record.zh)
+        };
+      })
+      .filter((item) => [item.en, item.zh].some(hasText)),
     note: readString(value.note),
     summary: readOptionalString(value.summary),
     createdAt: readString(value.createdAt, now),
     updatedAt: readString(value.updatedAt, now)
   };
+
+  if (
+    result.terms.length === 0 &&
+    result.patterns.length === 0 &&
+    result.bilingual.length === 0
+  ) {
+    throw new AiAnalysisError(
+      "empty_result",
+      "模型返回了 JSON，但核心术语、重点句式和双语对照都是空的。请换一段更完整的英文论文文本，或检查模型输出。"
+    );
+  }
+
+  return result;
+}
+
+function getApiFailureMessage(status: number) {
+  if (status === 401 || status === 403) {
+    return "学校 API 鉴权失败，请检查 OPENAI_API_KEY 是否正确，并确认 Vercel Production 环境变量已保存后重新部署。";
+  }
+
+  if (status === 404) {
+    return "学校 API 地址或模型配置可能不正确，请检查 OPENAI_BASE_URL 和 OPENAI_MODEL。";
+  }
+
+  return `学校 API 请求失败（HTTP ${status}），请检查 API 配置、校园网或 VPN 连接。`;
+}
+
+function hasText(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

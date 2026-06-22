@@ -18,11 +18,18 @@ import {
 } from "@/lib/mock";
 import { countEnglishWords, createId } from "@/lib/utils";
 import type {
+  AnalysisErrorState,
   AnalysisResult,
   ReadingMode,
   ReadingRecord,
   SaveStatus
 } from "@/types/analysis";
+
+type AnalyzeErrorPayload = {
+  error?: string;
+  code?: string;
+  status?: number;
+};
 
 export function ReadingWorkbench() {
   const searchParams = useSearchParams();
@@ -34,6 +41,9 @@ export function ReadingWorkbench() {
   const [originalText, setOriginalText] = useState(defaultOriginalText);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(() =>
     createMockAnalysisResult()
+  );
+  const [analysisError, setAnalysisError] = useState<AnalysisErrorState | null>(
+    null
   );
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [lastEditedAt, setLastEditedAt] = useState(() => new Date().toISOString());
@@ -73,6 +83,7 @@ export function ReadingWorkbench() {
         setTags(record.tags);
         setOriginalText(record.originalText);
         setAnalysisResult(record.analysisResult);
+        setAnalysisError(null);
         setCreatedAt(record.createdAt);
         setLastEditedAt(record.updatedAt);
         setSyncedToGithub(Boolean(record.syncedToGithub));
@@ -150,6 +161,7 @@ export function ReadingWorkbench() {
 
     setAnalyzing(true);
     setCollapsed(false);
+    setAnalysisError(null);
 
     try {
       const response = await fetch("/api/analyze", {
@@ -161,14 +173,17 @@ export function ReadingWorkbench() {
       const payload = (await response.json()) as {
         result?: AnalysisResult;
         error?: string;
+        code?: string;
+        status?: number;
       };
 
       if (!response.ok || !payload.result) {
-        throw new Error(payload.error ?? "解析失败，请检查 API 配置、校园网或 VPN 连接");
+        throw createAnalyzeError(payload);
       }
 
       const now = new Date().toISOString();
       setAnalysisResult(payload.result);
+      setAnalysisError(null);
       await saveRecord({
         ...buildRecord(now),
         analysisResult: payload.result,
@@ -181,10 +196,10 @@ export function ReadingWorkbench() {
       setSaveStatus("saved");
       showToast("解析完成，已保存到本地");
     } catch (error) {
+      const analyzeError = normalizeAnalyzeError(error);
+      setAnalysisError(analyzeError);
       showToast(
-        error instanceof Error
-          ? error.message
-          : "解析失败，请检查 API 配置、校园网或 VPN 连接",
+        analyzeError.message,
         "error"
       );
     } finally {
@@ -207,6 +222,7 @@ export function ReadingWorkbench() {
     setTags([]);
     setOriginalText("");
     setAnalysisResult(null);
+    setAnalysisError(null);
     setCreatedAt(now);
     setLastEditedAt(now);
     setSyncedToGithub(false);
@@ -289,6 +305,7 @@ export function ReadingWorkbench() {
           analyzing={analyzing}
           onTitleChange={(value) => {
             setSyncedToGithub(false);
+            setAnalysisError(null);
             setTitle(value);
           }}
           onCitationChange={(value) => {
@@ -297,10 +314,12 @@ export function ReadingWorkbench() {
           }}
           onTagsChange={(value) => {
             setSyncedToGithub(false);
+            setAnalysisError(null);
             setTags(value);
           }}
           onTextChange={(value) => {
             setSyncedToGithub(false);
+            setAnalysisError(null);
             setOriginalText(value);
           }}
           onClearText={() => {
@@ -313,6 +332,7 @@ export function ReadingWorkbench() {
 
         <AnalysisPanel
           result={analysisResult}
+          error={analysisError}
           mode={mode}
           loading={analyzing}
           collapsed={collapsed}
@@ -347,4 +367,47 @@ export function ReadingWorkbench() {
       <Toast message={toast?.message ?? null} tone={toast?.tone} />
     </AppShell>
   );
+}
+
+function createAnalyzeError(payload: AnalyzeErrorPayload) {
+  const error = new Error(
+    payload.error ?? "解析失败，请检查 API 配置、校园网或 VPN 连接"
+  ) as Error & { status?: number };
+  error.name = payload.code ?? "analyze_failed";
+  error.status = payload.status;
+  return error;
+}
+
+function normalizeAnalyzeError(error: unknown): AnalysisErrorState {
+  if (error instanceof Error) {
+    const maybeStatus = (error as Error & { status?: unknown }).status;
+    return {
+      title: getAnalyzeErrorTitle(error.name),
+      message: error.message,
+      code: error.name === "Error" ? undefined : error.name,
+      status: typeof maybeStatus === "number" ? maybeStatus : undefined
+    };
+  }
+
+  return {
+    title: "解析失败",
+    message: "解析失败，请检查 API 配置、校园网或 VPN 连接"
+  };
+}
+
+function getAnalyzeErrorTitle(code?: string) {
+  switch (code) {
+    case "api_request_failed":
+      return "API 请求失败";
+    case "empty_response":
+      return "API 返回为空";
+    case "invalid_json":
+      return "JSON 解析失败";
+    case "empty_result":
+      return "模型返回空数据";
+    case "missing_text":
+      return "缺少英文原文";
+    default:
+      return "解析失败";
+  }
 }

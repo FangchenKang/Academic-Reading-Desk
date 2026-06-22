@@ -25,6 +25,13 @@ export type AnalysisResult = {
   updatedAt: string;
 };
 
+export type AnalysisErrorState = {
+  title: string;
+  message: string;
+  code?: string;
+  status?: number;
+};
+
 export type ReadingRecord = {
   id: string;
   title: string;

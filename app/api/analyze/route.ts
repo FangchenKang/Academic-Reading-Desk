@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { analyzeAcademicText, hasConfiguredAiKey } from "@/lib/ai";
+import {
+  analyzeAcademicText,
+  getAiAnalysisErrorPayload,
+  hasConfiguredAiKey
+} from "@/lib/ai";
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +15,7 @@ export async function POST(request: Request) {
 
     if (!body.text?.trim()) {
       return NextResponse.json(
-        { error: "请提供需要解析的英文文本" },
+        { error: "请提供需要解析的英文文本", code: "missing_text" },
         { status: 400 }
       );
     }
@@ -26,9 +30,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ result, source: usesRealApi ? "api" : "mock" });
   } catch (error) {
     console.error("[api/analyze]", error);
+
+    const payload = getAiAnalysisErrorPayload(error);
+    const status =
+      payload.code === "api_request_failed"
+        ? 502
+        : payload.code === "unknown"
+          ? 500
+          : 422;
+
     return NextResponse.json(
-      { error: "解析失败，请检查 API 配置、校园网或 VPN 连接" },
-      { status: 500 }
+      { ...payload, source: hasConfiguredAiKey() ? "api" : "mock" },
+      { status }
     );
   }
 }

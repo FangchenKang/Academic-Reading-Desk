@@ -1,16 +1,21 @@
 "use client";
 
-import { ChevronUp, Loader2 } from "lucide-react";
+import { ChevronUp, CircleAlert, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AutoNoteCard } from "@/components/analysis/auto-note-card";
 import { BilingualTable } from "@/components/analysis/bilingual-table";
 import { PatternList } from "@/components/analysis/pattern-list";
 import { TermGrid } from "@/components/analysis/term-grid";
-import type { AnalysisResult, ReadingMode } from "@/types/analysis";
+import type {
+  AnalysisErrorState,
+  AnalysisResult,
+  ReadingMode
+} from "@/types/analysis";
 
 export function AnalysisPanel({
   result,
+  error,
   mode,
   loading,
   collapsed,
@@ -19,6 +24,7 @@ export function AnalysisPanel({
   onCopied
 }: {
   result: AnalysisResult | null;
+  error: AnalysisErrorState | null;
   mode: ReadingMode;
   loading: boolean;
   collapsed: boolean;
@@ -49,14 +55,16 @@ export function AnalysisPanel({
       <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto bg-slate-50 px-5 py-5">
         {loading ? <AnalysisLoading /> : null}
 
-        {!loading && !result ? (
+        {!loading && error ? <AnalysisErrorCard error={error} /> : null}
+
+        {!loading && !error && !result ? (
           <EmptyState
             title="暂无解析结果"
             description="点击左侧“解析文本”后，这里会展示核心术语、重点句式、双语对照和自动笔记。"
           />
         ) : null}
 
-        {!loading && result && !collapsed ? (
+        {!loading && !error && result && !collapsed ? (
           <div className="space-y-4">
             <TermGrid
               terms={result.terms}
@@ -78,7 +86,7 @@ export function AnalysisPanel({
           </div>
         ) : null}
 
-        {!loading && result && collapsed ? (
+        {!loading && !error && result && collapsed ? (
           <EmptyState
             title="结果模块已收起"
             description="点击右上角“展开全部”即可继续查看解析结果。"
@@ -86,6 +94,26 @@ export function AnalysisPanel({
         ) : null}
       </div>
     </section>
+  );
+}
+
+function AnalysisErrorCard({ error }: { error: AnalysisErrorState }) {
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900">
+      <div className="flex items-start gap-3">
+        <CircleAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+        <div>
+          <h3 className="text-sm font-semibold">{error.title}</h3>
+          <p className="mt-1 text-sm leading-6 text-red-800">{error.message}</p>
+          {error.code ? (
+            <p className="mt-2 text-xs text-red-700">错误类型：{error.code}</p>
+          ) : null}
+          {error.status ? (
+            <p className="mt-1 text-xs text-red-700">HTTP 状态码：{error.status}</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
