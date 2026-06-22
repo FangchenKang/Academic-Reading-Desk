@@ -32,7 +32,7 @@ export function TermGrid({
         <div>
           <h3 className="text-base font-semibold text-slate-950">一、核心术语</h3>
           <p className="mt-1 text-xs text-slate-500">
-            从论文语境中提取值得长期积累的学科表达
+            从论文语境中提取具有概念意义的学科核心术语
           </p>
         </div>
         <div className="flex items-center gap-2">

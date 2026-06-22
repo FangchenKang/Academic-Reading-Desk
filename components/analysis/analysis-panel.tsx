@@ -7,6 +7,7 @@ import { AutoNoteCard } from "@/components/analysis/auto-note-card";
 import { BilingualTable } from "@/components/analysis/bilingual-table";
 import { PatternList } from "@/components/analysis/pattern-list";
 import { TermGrid } from "@/components/analysis/term-grid";
+import { VocabularyList } from "@/components/analysis/vocabulary-list";
 import type {
   AnalysisErrorState,
   AnalysisResult,
@@ -60,7 +61,7 @@ export function AnalysisPanel({
         {!loading && !error && !result ? (
           <EmptyState
             title="暂无解析结果"
-            description="点击左侧“解析文本”后，这里会展示核心术语、重点句式、双语对照和自动笔记。"
+            description="点击左侧“解析文本”后，这里会展示核心术语、学术表达词汇、重点句式、双语对照和自动笔记。"
           />
         ) : null}
 
@@ -71,6 +72,7 @@ export function AnalysisPanel({
               mode={mode}
               onCopied={() => onCopied("术语已复制")}
             />
+            <VocabularyList vocabulary={result.vocabulary ?? []} mode={mode} />
             <PatternList patterns={result.patterns} mode={mode} />
             <BilingualTable
               items={result.bilingual}

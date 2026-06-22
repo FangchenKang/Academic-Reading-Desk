@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
+import { getRecordLexiconStats } from "@/lib/vocabulary";
 import type { ReadingRecord } from "@/types/analysis";
 
 export function RecordCard({
@@ -14,6 +15,8 @@ export function RecordCard({
   record: ReadingRecord;
   onDelete: (id: string) => void;
 }) {
+  const stats = getRecordLexiconStats(record);
+
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-200">
       <div className="flex items-start justify-between gap-4">
@@ -28,6 +31,9 @@ export function RecordCard({
           ) : null}
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
             {record.originalText || "暂无原文内容"}
+          </p>
+          <p className="mt-2 text-xs text-slate-400">
+            核心术语 {stats.terms} 个，学术表达 {stats.vocabulary} 个
           </p>
         </Link>
         <Button

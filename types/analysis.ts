@@ -1,5 +1,29 @@
 export type ReadingMode = "english" | "bilingual" | "chinese";
 
+export type VocabularyCategory =
+  | "disciplinary_term"
+  | "academic_expression"
+  | "general_vocabulary";
+
+export type VocabularyPhraseType =
+  | "verb"
+  | "noun_phrase"
+  | "adjective"
+  | "adverb"
+  | "collocation"
+  | "transition"
+  | "other";
+
+export type VocabularyItem = {
+  word: string;
+  translation: string;
+  category: VocabularyCategory;
+  explanation?: string;
+  example?: string;
+  phraseType?: VocabularyPhraseType;
+  frequency?: number;
+};
+
 export type AnalysisResult = {
   title: string;
   tags: string[];
@@ -9,6 +33,7 @@ export type AnalysisResult = {
     explanation?: string;
     example?: string;
   }[];
+  vocabulary?: VocabularyItem[];
   patterns: {
     type: string;
     description: string;

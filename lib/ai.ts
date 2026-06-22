@@ -1,4 +1,8 @@
-import type { AnalysisResult } from "@/types/analysis";
+import type {
+  AnalysisResult,
+  VocabularyCategory,
+  VocabularyPhraseType
+} from "@/types/analysis";
 import { createMockAnalysisResult } from "@/lib/mock";
 
 const defaultBaseUrl = "https://models.sjtu.edu.cn/api/v1";
@@ -58,6 +62,17 @@ const requiredJsonShape = `{
       "example": "source sentence or phrase from the English text"
     }
   ],
+  "vocabulary": [
+    {
+      "word": "transferable academic expression from the source text",
+      "translation": "中文释义",
+      "category": "academic_expression",
+      "explanation": "说明这个表达在论文写作中的功能",
+      "example": "source sentence or phrase from the English text",
+      "phraseType": "verb | noun_phrase | adjective | adverb | collocation | transition | other",
+      "frequency": 1
+    }
+  ],
   "patterns": [
     {
       "type": "句式功能类型，例如 研究问题句 / 理论缺口句 / 机制解释句",
@@ -93,13 +108,14 @@ export function buildAcademicReadingPrompt(input: {
 ${input.text}
 
 必须遵守：
-1. 顶层字段必须使用英文键名：title, tags, terms, patterns, bilingual, note, summary, createdAt, updatedAt。
-2. terms 必须是非空数组。优先提取 6 到 10 个政治学、公共管理、社会科学论文中有概念意义、理论意义或写作价值的术语或短语。即使文本较短，也至少提取 3 个。
-3. patterns 必须是非空数组。提取 3 到 5 个重点句式，包括研究问题句、理论缺口句、机制解释句、方法说明句、发现总结句或政策启示句等。即使文本较短，也至少提取 2 个。
-4. bilingual 必须是非空数组。把原文拆成句子或意义单元，生成英文和中文对照。即使文本较短，也至少返回 2 条。
-5. 不要返回空数组。不要返回中文键名。不要把 JSON 放进 Markdown 代码块。
-6. 如果原文信息有限，也要基于已有文本提取可用内容，不要用空数组代替分析。
-7. note 必须用中文概括本段核心观点、关键词、逻辑关系和可借鉴写法。
+1. 顶层字段必须使用英文键名：title, tags, terms, vocabulary, patterns, bilingual, note, summary, createdAt, updatedAt。
+2. terms 必须是非空数组，只提取 6 到 10 个具有政治学、公共管理或社会科学概念意义的学科核心术语。不要把普通写作动词或通用搭配放入 terms。即使文本较短，也至少提取 3 个。
+3. vocabulary 必须提取 8 到 15 个可迁移到英文学术论文写作中的表达，优先选择原文中的动词、名词短语、搭配、转折表达和机制表达。vocabulary 不是泛泛背单词，category 默认使用 academic_expression；不要与 terms 大量重复。
+4. patterns 必须是非空数组。提取 3 到 5 个重点句式，包括研究问题句、理论缺口句、机制解释句、方法说明句、发现总结句或政策启示句等。即使文本较短，也至少提取 2 个。
+5. bilingual 必须是非空数组。把原文拆成句子或意义单元，生成英文和中文对照。即使文本较短，也至少返回 2 条。
+6. 不要返回空数组。不要返回中文键名。不要把 JSON 放进 Markdown 代码块。
+7. 如果原文信息有限，也要基于已有文本提取可用内容，不要用空数组代替分析。
+8. note 必须用中文概括本段核心观点、关键词、逻辑关系和可借鉴写法。
 
 JSON 结构必须严格匹配：
 ${requiredJsonShape}`;
@@ -126,9 +142,9 @@ ${input.text}
 ${input.previousOutput.slice(0, 3000)}
 
 修复要求：
-1. terms、patterns、bilingual 都必须是非空数组。
+1. terms、vocabulary、patterns、bilingual 都必须是非空数组。
 2. 必须使用英文键名和以下 JSON 结构。
-3. 如果原文较短，也至少返回 3 个 terms、2 个 patterns、2 条 bilingual。
+3. 如果原文较短，也至少返回 3 个 terms、5 个 vocabulary、2 个 patterns、2 条 bilingual。
 4. 只输出 JSON 对象，不要输出任何说明文字。
 
 ${requiredJsonShape}`;
@@ -319,52 +335,141 @@ function normalizeAnalysisResult(
   const result = {
     title: readStringByKeys(value, ["title"], input.title),
     tags: readStringArray(readValueByKeys(value, ["tags", "标签"]), input.tags),
-    terms: readArrayByKeys(value, [
-      "terms",
-      "keyTerms",
-      "coreTerms",
-      "academicTerms",
-      "terminology",
-      "核心术语",
-      "术语"
-    ])
-      .map((item, index) => {
-        const record = isRecord(item) ? item : {};
-        const translation = readStringByKeys(record, [
-          "translation",
-          "zh",
-          "chinese",
-          "meaning",
-          "中文",
-          "释义"
-        ]);
-        return {
-          term:
-            readStringByKeys(record, ["term", "phrase", "name", "english", "en", "术语"]) ||
-            translation ||
-            `term-${index + 1}`,
-          translation,
-          explanation: readOptionalStringByKeys(record, [
-            "explanation",
-            "definition",
-            "description",
-            "note",
-            "解释",
-            "说明"
-          ]),
-          example: readOptionalStringByKeys(record, [
-            "example",
-            "source",
-            "sentence",
-            "context",
-            "例句",
-            "原文例句"
-          ])
-        };
-      })
-      .filter((item) =>
-        [item.term, item.translation, item.explanation, item.example].some(hasText)
-      ),
+    terms: dedupeByText(
+      readArrayByKeys(value, [
+        "terms",
+        "keyTerms",
+        "coreTerms",
+        "academicTerms",
+        "terminology",
+        "核心术语",
+        "术语"
+      ])
+        .map((item, index) => {
+          const record = isRecord(item) ? item : {};
+          const translation = readStringByKeys(record, [
+            "translation",
+            "zh",
+            "chinese",
+            "meaning",
+            "中文",
+            "释义"
+          ]);
+          return {
+            term:
+              readStringByKeys(record, [
+                "term",
+                "phrase",
+                "name",
+                "english",
+                "en",
+                "术语"
+              ]) ||
+              translation ||
+              `term-${index + 1}`,
+            translation,
+            explanation: readOptionalStringByKeys(record, [
+              "explanation",
+              "definition",
+              "description",
+              "note",
+              "解释",
+              "说明"
+            ]),
+            example: readOptionalStringByKeys(record, [
+              "example",
+              "source",
+              "sentence",
+              "context",
+              "例句",
+              "原文例句"
+            ])
+          };
+        })
+        .filter((item) =>
+          [item.term, item.translation, item.explanation, item.example].some(hasText)
+        ),
+      (item) => item.term
+    ),
+    vocabulary: dedupeByText(
+      readArrayByKeys(value, [
+        "vocabulary",
+        "academicVocabulary",
+        "academicExpressions",
+        "writingVocabulary",
+        "expressions",
+        "学术表达词汇",
+        "表达词汇",
+        "学术表达"
+      ])
+        .map((item, index) => {
+          const record = isRecord(item) ? item : {};
+          const translation = readStringByKeys(record, [
+            "translation",
+            "zh",
+            "chinese",
+            "meaning",
+            "中文",
+            "释义"
+          ]);
+          return {
+            word:
+              readStringByKeys(record, [
+                "word",
+                "phrase",
+                "expression",
+                "term",
+                "english",
+                "en",
+                "表达",
+                "词汇"
+              ]) ||
+              translation ||
+              `expression-${index + 1}`,
+            translation,
+            category: normalizeVocabularyCategory(
+              readOptionalStringByKeys(record, ["category", "type", "类别"])
+            ),
+            explanation: readOptionalStringByKeys(record, [
+              "explanation",
+              "definition",
+              "description",
+              "function",
+              "note",
+              "解释",
+              "说明"
+            ]),
+            example: readOptionalStringByKeys(record, [
+              "example",
+              "source",
+              "sentence",
+              "context",
+              "例句",
+              "原文例句"
+            ]),
+            phraseType: normalizePhraseType(
+              readOptionalStringByKeys(record, [
+                "phraseType",
+                "phrase_type",
+                "partOfSpeech",
+                "pos",
+                "表达类型",
+                "词性"
+              ])
+            ),
+            frequency: readPositiveNumberByKeys(record, [
+              "frequency",
+              "count",
+              "occurrences",
+              "频次"
+            ])
+          };
+        })
+        .filter((item) =>
+          [item.word, item.translation, item.explanation, item.example].some(hasText)
+        ),
+      (item) => item.word
+    ),
     patterns: readArrayByKeys(value, [
       "patterns",
       "sentencePatterns",
@@ -443,6 +548,48 @@ function normalizeAnalysisResult(
   return result;
 }
 
+function dedupeByText<T>(items: T[], getText: (item: T) => string) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = normalizeLexiconKey(getText(item));
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function normalizeLexiconKey(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizeVocabularyCategory(value: string | undefined): VocabularyCategory {
+  if (
+    value === "disciplinary_term" ||
+    value === "academic_expression" ||
+    value === "general_vocabulary"
+  ) {
+    return value;
+  }
+
+  return "academic_expression" as const;
+}
+
+function normalizePhraseType(value: string | undefined): VocabularyPhraseType {
+  if (
+    value === "verb" ||
+    value === "noun_phrase" ||
+    value === "adjective" ||
+    value === "adverb" ||
+    value === "collocation" ||
+    value === "transition" ||
+    value === "other"
+  ) {
+    return value;
+  }
+
+  return "other" as const;
+}
+
 function getApiFailureMessage(status: number) {
   if (status === 401 || status === 403) {
     return "学校 API 鉴权失败，请检查 OPENAI_API_KEY 是否正确，并确认 Vercel Production 环境变量已保存后重新部署。";
@@ -486,6 +633,26 @@ function readStringByKeys(
 
 function readOptionalStringByKeys(record: Record<string, unknown>, keys: string[]) {
   return readOptionalString(readValueByKeys(record, keys));
+}
+
+function readPositiveNumberByKeys(record: Record<string, unknown>, keys: string[]) {
+  const value = readValueByKeys(record, keys);
+  const numberValue =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : undefined;
+
+  if (
+    typeof numberValue !== "number" ||
+    !Number.isFinite(numberValue) ||
+    numberValue <= 0
+  ) {
+    return undefined;
+  }
+
+  return numberValue;
 }
 
 function readString(value: unknown, fallback = "") {

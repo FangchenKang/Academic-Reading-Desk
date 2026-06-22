@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "首页", icon: Home },
   { href: "/records", label: "记录", icon: FileText },
-  { href: "/terms", label: "术语库", icon: BookMarked },
+  { href: "/terms", label: "词库", icon: BookMarked },
   { href: "/notes", label: "笔记", icon: NotebookPen },
   { href: "/templates", label: "模板", icon: Layers3 },
   { href: "/settings", label: "设置", icon: Settings },

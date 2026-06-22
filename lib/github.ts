@@ -1,5 +1,6 @@
 import type { ReadingRecord } from "@/types/analysis";
 import { slugify } from "@/lib/utils";
+import { phraseTypeLabels } from "@/lib/vocabulary";
 
 export function recordToMarkdown(record: ReadingRecord) {
   const result = record.analysisResult;
@@ -28,7 +29,20 @@ export function recordToMarkdown(record: ReadingRecord) {
       "|---|---|---|",
       ...result.terms.map(
         (item) =>
-          `| ${item.term} | ${item.translation} | ${item.explanation ?? ""} |`
+          `| ${tableCell(item.term)} | ${tableCell(item.translation)} | ${tableCell(
+            item.explanation
+          )} |`
+      ),
+      "",
+      "## 学术表达词汇",
+      "",
+      "| 英文表达 | 中文释义 | 表达类型 | 解释 | 例句 |",
+      "|---|---|---|---|---|",
+      ...(result.vocabulary ?? []).map(
+        (item) =>
+          `| ${tableCell(item.word)} | ${tableCell(item.translation)} | ${tableCell(
+            phraseTypeLabels[item.phraseType ?? "other"]
+          )} | ${tableCell(item.explanation)} | ${tableCell(item.example)} |`
       ),
       "",
       "## 重点句式",
@@ -53,7 +67,9 @@ export function recordToMarkdown(record: ReadingRecord) {
       "",
       "| 英文原句 | 中文翻译 |",
       "|---|---|---|",
-      ...result.bilingual.map((item) => `| ${item.en} | ${item.zh} |`),
+      ...result.bilingual.map(
+        (item) => `| ${tableCell(item.en)} | ${tableCell(item.zh)} |`
+      ),
       "",
       "## 自动笔记",
       "",
@@ -70,6 +86,10 @@ export function recordToMarkdown(record: ReadingRecord) {
   );
 
   return lines.join("\n");
+}
+
+function tableCell(value: string | undefined) {
+  return (value ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, "<br>");
 }
 
 export function buildGithubPath(record: ReadingRecord) {

@@ -20,7 +20,7 @@ export function AutoNoteCard({
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-slate-950">四、自动笔记</h3>
+          <h3 className="text-base font-semibold text-slate-950">五、自动笔记</h3>
           <p className="mt-1 text-xs text-slate-500">
             可编辑的中文理解笔记，适合后续沉淀到个人知识库
           </p>

@@ -82,6 +82,120 @@ export function createMockAnalysisResult(
           "Procedural fairness of algorithmic decision-making significantly enhances trust."
       }
     ],
+    vocabulary: [
+      {
+        word: "investigates",
+        translation: "考察；研究",
+        category: "academic_expression",
+        phraseType: "verb",
+        frequency: 1,
+        explanation: "论文中常用来说明研究对象和研究问题的动词。",
+        example: "This study investigates how algorithmic governance influences public trust."
+      },
+      {
+        word: "influences",
+        translation: "影响；作用于",
+        category: "academic_expression",
+        phraseType: "verb",
+        frequency: 1,
+        explanation: "用于表达变量之间的影响关系。",
+        example: "Algorithmic governance influences public trust in governmental institutions."
+      },
+      {
+        word: "perceived transparency",
+        translation: "感知透明度",
+        category: "academic_expression",
+        phraseType: "noun_phrase",
+        frequency: 1,
+        explanation: "可用于描述公众对治理过程透明性的主观判断。",
+        example:
+          "We find that perceived transparency and procedural fairness significantly enhance trust."
+      },
+      {
+        word: "procedural fairness",
+        translation: "程序公平",
+        category: "academic_expression",
+        phraseType: "noun_phrase",
+        frequency: 1,
+        explanation: "公共管理与政治学论文中常见的规范性评价表达。",
+        example:
+          "Procedural fairness of algorithmic decision-making significantly enhances trust."
+      },
+      {
+        word: "erode trust",
+        translation: "削弱信任；侵蚀信任",
+        category: "academic_expression",
+        phraseType: "collocation",
+        frequency: 1,
+        explanation: "用于表达某种制度缺陷或治理问题对信任的负面影响。",
+        example: "Opacity and lack of accountability erode it."
+      },
+      {
+        word: "institutional arrangements",
+        translation: "制度安排",
+        category: "academic_expression",
+        phraseType: "noun_phrase",
+        frequency: 1,
+        explanation: "用于概括监督、参与、问责等制度化配置。",
+        example:
+          "Institutional arrangements, such as independent oversight and public participation, play a crucial moderating role."
+      },
+      {
+        word: "independent oversight",
+        translation: "独立监督",
+        category: "academic_expression",
+        phraseType: "noun_phrase",
+        frequency: 1,
+        explanation: "公共治理论文中常用来描述监督机制的表达。",
+        example: "Institutional arrangements, such as independent oversight and public participation..."
+      },
+      {
+        word: "public participation",
+        translation: "公众参与",
+        category: "academic_expression",
+        phraseType: "noun_phrase",
+        frequency: 1,
+        explanation: "用于描述公众进入政策过程或治理过程的机制。",
+        example: "Independent oversight and public participation play a crucial moderating role."
+      },
+      {
+        word: "play a crucial moderating role",
+        translation: "发挥关键调节作用",
+        category: "academic_expression",
+        phraseType: "collocation",
+        frequency: 1,
+        explanation: "讨论变量调节关系时非常可复用的表达。",
+        example:
+          "Institutional arrangements ... play a crucial moderating role."
+      },
+      {
+        word: "fostering trust",
+        translation: "培育信任",
+        category: "academic_expression",
+        phraseType: "collocation",
+        frequency: 1,
+        explanation: "常用于政策启示或治理目标的表达。",
+        example: "Fostering trust in the digital age requires not only technical accuracy..."
+      },
+      {
+        word: "robust governance mechanisms",
+        translation: "健全的治理机制",
+        category: "academic_expression",
+        phraseType: "noun_phrase",
+        frequency: 1,
+        explanation: "用于概括较强、较完整的制度化治理安排。",
+        example: "It requires not only technical accuracy but also robust governance mechanisms."
+      },
+      {
+        word: "citizen engagement",
+        translation: "公民参与；公民投入",
+        category: "academic_expression",
+        phraseType: "noun_phrase",
+        frequency: 1,
+        explanation: "公共管理和数字治理研究中常见的参与性表达。",
+        example: "Governance mechanisms that embed accountability and promote citizen engagement."
+      }
+    ],
     patterns: [
       {
         type: "研究问题句",
