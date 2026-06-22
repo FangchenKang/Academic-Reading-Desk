@@ -27,6 +27,23 @@ This study investigates how algorithmic governance influences public trust in go
 | transparency | 透明度 | 决策过程、依据与责任链条能够被公众理解和监督的程度。 |
 | procedural fairness | 程序公平 | 公众对决策过程是否公正、可参与、可解释和一致的感知。 |
 
+## 学术表达词汇
+
+| 英文表达 | 中文释义 | 表达类型 | 解释 | 例句 |
+|---|---|---|---|---|
+| investigates | 考察；研究 | 动词 | 论文中常用来说明研究对象和研究问题的动词。 | This study investigates how algorithmic governance influences public trust. |
+| influences | 影响；作用于 | 动词 | 用于表达变量之间的影响关系。 | Algorithmic governance influences public trust in governmental institutions. |
+| perceived transparency | 感知透明度 | 名词短语 | 可用于描述公众对治理过程透明性的主观判断。 | We find that perceived transparency and procedural fairness significantly enhance trust. |
+| procedural fairness | 程序公平 | 名词短语 | 公共管理与政治学论文中常见的规范性评价表达。 | Procedural fairness of algorithmic decision-making significantly enhances trust. |
+| erode trust | 削弱信任；侵蚀信任 | 搭配 | 用于表达某种制度缺陷或治理问题对信任的负面影响。 | Opacity and lack of accountability erode it. |
+| institutional arrangements | 制度安排 | 名词短语 | 用于概括监督、参与、问责等制度化配置。 | Institutional arrangements, such as independent oversight and public participation, play a crucial moderating role. |
+| independent oversight | 独立监督 | 名词短语 | 公共治理论文中常用来描述监督机制的表达。 | Institutional arrangements, such as independent oversight and public participation... |
+| public participation | 公众参与 | 名词短语 | 用于描述公众进入政策过程或治理过程的机制。 | Independent oversight and public participation play a crucial moderating role. |
+| play a crucial moderating role | 发挥关键调节作用 | 搭配 | 讨论变量调节关系时非常可复用的表达。 | Institutional arrangements ... play a crucial moderating role. |
+| fostering trust | 培育信任 | 搭配 | 常用于政策启示或治理目标的表达。 | Fostering trust in the digital age requires not only technical accuracy... |
+| robust governance mechanisms | 健全的治理机制 | 名词短语 | 用于概括较强、较完整的制度化治理安排。 | It requires not only technical accuracy but also robust governance mechanisms. |
+| citizen engagement | 公民参与；公民投入 | 名词短语 | 公共管理和数字治理研究中常见的参与性表达。 | Governance mechanisms that embed accountability and promote citizen engagement. |
+
 ## 重点句式
 
 ### 研究问题句
@@ -68,5 +85,5 @@ This study investigates how algorithmic governance influences public trust in go
 
 ## 元数据
 
-- 创建时间：2026-06-22T12:42:19.260Z
-- 更新时间：2026-06-22T12:42:45.453Z
+- 创建时间：2026-06-22T16:08:36.533Z
+- 更新时间：2026-06-22T16:08:38.998Z
