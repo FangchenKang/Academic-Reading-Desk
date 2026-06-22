@@ -49,15 +49,17 @@ export function ReadingWorkbench() {
   const [lastEditedAt, setLastEditedAt] = useState(() => new Date().toISOString());
   const [mode, setMode] = useState<ReadingMode>("bilingual");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [hasSavedRecord, setHasSavedRecord] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncedToGithub, setSyncedToGithub] = useState(false);
   const [githubPath, setGithubPath] = useState<string | undefined>();
   const [collapsed, setCollapsed] = useState(false);
-  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(
-    null
-  );
+  const [toast, setToast] = useState<{
+    message: string;
+    tone: "success" | "error";
+  } | null>(null);
 
   const wordCount = useMemo(() => countEnglishWords(originalText), [originalText]);
 
@@ -66,6 +68,7 @@ export function ReadingWorkbench() {
 
     async function loadRecord() {
       if (!requestedRecordId) {
+        setHasSavedRecord(false);
         setHydrated(true);
         return;
       }
@@ -73,6 +76,7 @@ export function ReadingWorkbench() {
       try {
         const record = await getRecord(requestedRecordId);
         if (!record || cancelled) {
+          setHasSavedRecord(false);
           setHydrated(true);
           return;
         }
@@ -86,6 +90,7 @@ export function ReadingWorkbench() {
         setAnalysisError(null);
         setCreatedAt(record.createdAt);
         setLastEditedAt(record.updatedAt);
+        setHasSavedRecord(true);
         setSyncedToGithub(Boolean(record.syncedToGithub));
         setGithubPath(record.githubPath);
       } catch {
@@ -116,11 +121,11 @@ export function ReadingWorkbench() {
     }),
     [
       analysisResult,
+      citation,
       createdAt,
       githubPath,
       originalText,
       recordId,
-      citation,
       syncedToGithub,
       tags,
       title
@@ -128,7 +133,7 @@ export function ReadingWorkbench() {
   );
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !hasSavedRecord) return;
 
     const timer = window.setTimeout(async () => {
       const now = new Date().toISOString();
@@ -136,7 +141,11 @@ export function ReadingWorkbench() {
       setSaveStatus("saving");
 
       try {
-        await saveRecord(record);
+        const savedRecord = await saveRecord(record);
+        if (savedRecord.id !== recordId) {
+          setRecordId(savedRecord.id);
+          setCreatedAt(savedRecord.createdAt);
+        }
         setLastEditedAt(now);
         setSaveStatus("saved");
       } catch {
@@ -146,7 +155,7 @@ export function ReadingWorkbench() {
     }, 650);
 
     return () => window.clearTimeout(timer);
-  }, [buildRecord, hydrated]);
+  }, [buildRecord, hasSavedRecord, hydrated, recordId]);
 
   function showToast(message: string, tone: "success" | "error" = "success") {
     setToast({ message, tone });
@@ -184,12 +193,17 @@ export function ReadingWorkbench() {
       const now = new Date().toISOString();
       setAnalysisResult(payload.result);
       setAnalysisError(null);
-      await saveRecord({
+      const savedRecord = await saveRecord({
         ...buildRecord(now),
         analysisResult: payload.result,
         syncedToGithub: false,
         githubPath: undefined
       });
+      if (savedRecord.id !== recordId) {
+        setRecordId(savedRecord.id);
+        setCreatedAt(savedRecord.createdAt);
+      }
+      setHasSavedRecord(true);
       setSyncedToGithub(false);
       setGithubPath(undefined);
       setLastEditedAt(now);
@@ -198,10 +212,7 @@ export function ReadingWorkbench() {
     } catch (error) {
       const analyzeError = normalizeAnalyzeError(error);
       setAnalysisError(analyzeError);
-      showToast(
-        analyzeError.message,
-        "error"
-      );
+      showToast(analyzeError.message, "error");
     } finally {
       setAnalyzing(false);
     }
@@ -210,10 +221,15 @@ export function ReadingWorkbench() {
   async function handleNew() {
     const now = new Date().toISOString();
 
-    try {
-      await saveRecord(buildRecord(now));
-    } catch {
-      showToast("本地保存失败，请检查浏览器权限", "error");
+    if (hasSavedRecord) {
+      try {
+        const savedRecord = await saveRecord(buildRecord(now));
+        if (savedRecord.id !== recordId) {
+          setRecordId(savedRecord.id);
+        }
+      } catch {
+        showToast("本地保存失败，请检查浏览器权限", "error");
+      }
     }
 
     setRecordId(createId());
@@ -225,6 +241,7 @@ export function ReadingWorkbench() {
     setAnalysisError(null);
     setCreatedAt(now);
     setLastEditedAt(now);
+    setHasSavedRecord(false);
     setSyncedToGithub(false);
     setGithubPath(undefined);
     setSaveStatus("idle");
@@ -254,19 +271,22 @@ export function ReadingWorkbench() {
       const now = new Date().toISOString();
       setSyncedToGithub(true);
       setGithubPath(payload.path);
-      await saveRecord({
+      const savedRecord = await saveRecord({
         ...record,
         updatedAt: now,
         syncedToGithub: true,
         githubPath: payload.path
       });
+      if (savedRecord.id !== recordId) {
+        setRecordId(savedRecord.id);
+        setCreatedAt(savedRecord.createdAt);
+      }
+      setHasSavedRecord(true);
       setLastEditedAt(now);
       showToast("已同步到 GitHub");
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "GitHub 同步失败，请稍后重试";
+        error instanceof Error ? error.message : "GitHub 同步失败，请稍后重试";
       showToast(message, "error");
     } finally {
       setSyncing(false);
@@ -324,6 +344,7 @@ export function ReadingWorkbench() {
           }}
           onClearText={() => {
             setSyncedToGithub(false);
+            setAnalysisError(null);
             setOriginalText("");
           }}
           onModeChange={setMode}
@@ -344,8 +365,15 @@ export function ReadingWorkbench() {
 
       <div className="fixed bottom-5 right-7 flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shadow-soft">
         <span className="inline-flex items-center gap-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-          保存到本地
+          <CheckCircle2
+            className={
+              hasSavedRecord
+                ? "h-3.5 w-3.5 text-emerald-600"
+                : "h-3.5 w-3.5 text-slate-400"
+            }
+            aria-hidden="true"
+          />
+          {hasSavedRecord ? "保存到本地" : "未保存为本地记录"}
         </span>
         <span className="h-3 w-px bg-slate-200" />
         <span className="inline-flex items-center gap-1.5">

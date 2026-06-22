@@ -53,7 +53,7 @@ export function RecordList() {
     return (
       <EmptyState
         title="暂无本地记录"
-        description="在首页输入文本并等待自动保存后，这里会显示历史学习记录。"
+        description="在首页粘贴英文文本并点击“解析文本”后，这里会显示本地学习记录。"
       />
     );
   }
