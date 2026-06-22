@@ -45,32 +45,93 @@ export function getAiAnalysisErrorPayload(error: unknown) {
 }
 
 export const academicReadingSystemPrompt =
-  "你是一个面向政治学、公共管理与社会科学研究者的英文学术精读助手。你的任务不是简单翻译，而是帮助研究者从英文论文段落中提取值得长期记忆的学科术语、学术短语、论文句式、段落逻辑和可复用写法。你需要特别关注政治学、公共管理、政策过程、数字治理、基层治理、组织理论、公共信任、制度分析、社会科学方法等相关表达。请输出严格 JSON，不要输出 Markdown，不要输出解释性前言。";
+  "你是一个面向政治学、公共管理与社会科学研究者的英文学术精读助手。你的任务不是简单翻译，而是帮助研究者从英文论文段落中提取值得长期记忆的学科术语、学术短语、论文句式、段落逻辑和可复用写法。你必须输出严格 JSON 对象，不能输出 Markdown、代码块、解释性前言或多余文本。";
+
+const requiredJsonShape = `{
+  "title": "string",
+  "tags": ["string"],
+  "terms": [
+    {
+      "term": "English academic term or phrase",
+      "translation": "中文释义",
+      "explanation": "结合原文语境的中文解释",
+      "example": "source sentence or phrase from the English text"
+    }
+  ],
+  "patterns": [
+    {
+      "type": "句式功能类型，例如 研究问题句 / 理论缺口句 / 机制解释句",
+      "description": "中文说明这个句式在论文写作中的功能",
+      "example": "original English sentence",
+      "reusableTemplate": "reusable English writing template"
+    }
+  ],
+  "bilingual": [
+    {
+      "en": "English sentence or meaning unit",
+      "zh": "准确自然的中文学术翻译"
+    }
+  ],
+  "note": "中文自动笔记",
+  "summary": "可选中文摘要",
+  "createdAt": "ISO datetime string, optional",
+  "updatedAt": "ISO datetime string, optional"
+}`;
 
 export function buildAcademicReadingPrompt(input: {
   title: string;
   tags: string[];
   text: string;
 }) {
-  return `请分析下面这段英文学术文本，并按照指定 JSON 结构输出结果。
+  return `请分析下面这段英文学术文本，并只输出一个严格 JSON 对象。
 
-论文标题：
-${input.title}
+论文标题：${input.title}
 
-学科标签：
-${input.tags.join("、")}
+学科标签：${input.tags.join("、") || "未指定"}
 
 英文原文：
 ${input.text}
 
-分析要求：
-1. 提取 6 到 10 个最值得记忆的学科核心术语。不要提取过于普通的英语单词，优先提取政治学、公共管理、社会科学论文中有概念意义、理论意义或写作价值的词。
-2. 每个术语需要给出中文释义、简短解释，并尽量结合原文语境说明其含义。
-3. 提取 3 到 5 个重点句式。重点识别研究问题句、文献缺口句、理论贡献句、机制解释句、方法说明句、发现总结句、政策启示句等。
-4. 每个句式需要说明它在论文写作中的功能，并提供原文例句。如果可以，请给出一个可复用英文模板。
-5. 将原文拆分成若干句子或意群，生成英中双语对照翻译。中文翻译要准确、自然、学术化，不要机械直译。
-6. 生成一段简洁中文自动笔记，概括本段的核心观点、关键概念、逻辑关系和可借鉴写法。
-7. 输出必须是严格 JSON，字段必须完全符合指定结构，不要输出代码块标记，不要输出 Markdown。`;
+必须遵守：
+1. 顶层字段必须使用英文键名：title, tags, terms, patterns, bilingual, note, summary, createdAt, updatedAt。
+2. terms 必须是非空数组。优先提取 6 到 10 个政治学、公共管理、社会科学论文中有概念意义、理论意义或写作价值的术语或短语。即使文本较短，也至少提取 3 个。
+3. patterns 必须是非空数组。提取 3 到 5 个重点句式，包括研究问题句、理论缺口句、机制解释句、方法说明句、发现总结句或政策启示句等。即使文本较短，也至少提取 2 个。
+4. bilingual 必须是非空数组。把原文拆成句子或意义单元，生成英文和中文对照。即使文本较短，也至少返回 2 条。
+5. 不要返回空数组。不要返回中文键名。不要把 JSON 放进 Markdown 代码块。
+6. 如果原文信息有限，也要基于已有文本提取可用内容，不要用空数组代替分析。
+7. note 必须用中文概括本段核心观点、关键词、逻辑关系和可借鉴写法。
+
+JSON 结构必须严格匹配：
+${requiredJsonShape}`;
+}
+
+function buildRepairPrompt(input: {
+  title: string;
+  tags: string[];
+  text: string;
+  previousOutput: string;
+  reason: string;
+}) {
+  return `你上一次返回的结果无法用于前端展示，原因是：${input.reason}
+
+请重新分析原文，并只输出一个严格 JSON 对象。不要解释，不要使用 Markdown。
+
+原文标题：${input.title}
+学科标签：${input.tags.join("、") || "未指定"}
+
+英文原文：
+${input.text}
+
+上一次模型返回内容如下，请不要照抄其中的空数组或错误结构：
+${input.previousOutput.slice(0, 3000)}
+
+修复要求：
+1. terms、patterns、bilingual 都必须是非空数组。
+2. 必须使用英文键名和以下 JSON 结构。
+3. 如果原文较短，也至少返回 3 个 terms、2 个 patterns、2 条 bilingual。
+4. 只输出 JSON 对象，不要输出任何说明文字。
+
+${requiredJsonShape}`;
 }
 
 export function hasConfiguredAiKey() {
@@ -90,7 +151,50 @@ export async function analyzeAcademicText(input: {
   const baseUrl = (process.env.OPENAI_BASE_URL || defaultBaseUrl).replace(/\/+$/, "");
   const model = process.env.OPENAI_MODEL || defaultModel;
   const userPrompt = buildAcademicReadingPrompt(input);
+  const content = await requestChatCompletion({ apiKey, baseUrl, model, userPrompt });
 
+  try {
+    return normalizeAnalysisResult(parseAnalysisJson(content), input);
+  } catch (error) {
+    if (!shouldRetryWithStrictSchema(error)) {
+      throw error;
+    }
+
+    const retryPrompt = buildRepairPrompt({
+      ...input,
+      previousOutput: content,
+      reason: error instanceof Error ? error.message : "模型返回结构不符合要求"
+    });
+    const retryContent = await requestChatCompletion({
+      apiKey,
+      baseUrl,
+      model,
+      userPrompt: retryPrompt
+    });
+
+    return normalizeAnalysisResult(parseAnalysisJson(retryContent), input);
+  }
+}
+
+type ChatCompletionResponse = {
+  choices?: {
+    message?: {
+      content?: string;
+    };
+  }[];
+};
+
+async function requestChatCompletion({
+  apiKey,
+  baseUrl,
+  model,
+  userPrompt
+}: {
+  apiKey?: string;
+  baseUrl: string;
+  model: string;
+  userPrompt: string;
+}) {
   let response: Response;
 
   try {
@@ -156,16 +260,15 @@ export async function analyzeAcademicText(input: {
     );
   }
 
-  return normalizeAnalysisResult(parseAnalysisJson(content), input);
+  return content;
 }
 
-type ChatCompletionResponse = {
-  choices?: {
-    message?: {
-      content?: string;
-    };
-  }[];
-};
+function shouldRetryWithStrictSchema(error: unknown) {
+  return (
+    error instanceof AiAnalysisError &&
+    (error.code === "empty_result" || error.code === "invalid_json")
+  );
+}
 
 function parseAnalysisJson(rawContent: string): unknown {
   const candidates = [
@@ -214,47 +317,116 @@ function normalizeAnalysisResult(
   const now = new Date().toISOString();
 
   const result = {
-    title: readString(value.title, input.title),
-    tags: readStringArray(value.tags, input.tags),
-    terms: readArray(value.terms)
-      .map((item) => {
+    title: readStringByKeys(value, ["title"], input.title),
+    tags: readStringArray(readValueByKeys(value, ["tags", "标签"]), input.tags),
+    terms: readArrayByKeys(value, [
+      "terms",
+      "keyTerms",
+      "coreTerms",
+      "academicTerms",
+      "terminology",
+      "核心术语",
+      "术语"
+    ])
+      .map((item, index) => {
         const record = isRecord(item) ? item : {};
+        const translation = readStringByKeys(record, [
+          "translation",
+          "zh",
+          "chinese",
+          "meaning",
+          "中文",
+          "释义"
+        ]);
         return {
-          term: readString(record.term),
-          translation: readString(record.translation),
-          explanation: readOptionalString(record.explanation),
-          example: readOptionalString(record.example)
+          term:
+            readStringByKeys(record, ["term", "phrase", "name", "english", "en", "术语"]) ||
+            translation ||
+            `term-${index + 1}`,
+          translation,
+          explanation: readOptionalStringByKeys(record, [
+            "explanation",
+            "definition",
+            "description",
+            "note",
+            "解释",
+            "说明"
+          ]),
+          example: readOptionalStringByKeys(record, [
+            "example",
+            "source",
+            "sentence",
+            "context",
+            "例句",
+            "原文例句"
+          ])
         };
       })
       .filter((item) =>
         [item.term, item.translation, item.explanation, item.example].some(hasText)
       ),
-    patterns: readArray(value.patterns)
-      .map((item) => {
+    patterns: readArrayByKeys(value, [
+      "patterns",
+      "sentencePatterns",
+      "writingPatterns",
+      "keySentences",
+      "重点句式",
+      "句式"
+    ])
+      .map((item, index) => {
         const record = isRecord(item) ? item : {};
         return {
-          type: readString(record.type),
-          description: readString(record.description),
-          example: readString(record.example),
-          reusableTemplate: readOptionalString(record.reusableTemplate)
+          type:
+            readStringByKeys(record, ["type", "name", "function", "category", "类型"]) ||
+            `句式 ${index + 1}`,
+          description: readStringByKeys(record, [
+            "description",
+            "explanation",
+            "function",
+            "说明",
+            "解释"
+          ]),
+          example: readStringByKeys(record, [
+            "example",
+            "sentence",
+            "source",
+            "原文例句",
+            "例句"
+          ]),
+          reusableTemplate: readOptionalStringByKeys(record, [
+            "reusableTemplate",
+            "template",
+            "writingTemplate",
+            "模板",
+            "可复用模板"
+          ])
         };
       })
       .filter((item) =>
         [item.type, item.description, item.example, item.reusableTemplate].some(hasText)
       ),
-    bilingual: readArray(value.bilingual)
-      .map((item) => {
+    bilingual: readArrayByKeys(value, [
+      "bilingual",
+      "translations",
+      "parallelText",
+      "sentenceTranslations",
+      "双语对照",
+      "翻译"
+    ])
+      .map((item, index) => {
         const record = isRecord(item) ? item : {};
         return {
-          en: readString(record.en),
-          zh: readString(record.zh)
+          en:
+            readStringByKeys(record, ["en", "english", "source", "original", "英文"]) ||
+            `sentence-${index + 1}`,
+          zh: readStringByKeys(record, ["zh", "chinese", "translation", "中文", "译文"])
         };
       })
       .filter((item) => [item.en, item.zh].some(hasText)),
-    note: readString(value.note),
-    summary: readOptionalString(value.summary),
-    createdAt: readString(value.createdAt, now),
-    updatedAt: readString(value.updatedAt, now)
+    note: readStringByKeys(value, ["note", "notes", "autoNote", "笔记", "自动笔记"]),
+    summary: readOptionalStringByKeys(value, ["summary", "摘要"]),
+    createdAt: readStringByKeys(value, ["createdAt"], now),
+    updatedAt: readStringByKeys(value, ["updatedAt"], now)
   };
 
   if (
@@ -264,7 +436,7 @@ function normalizeAnalysisResult(
   ) {
     throw new AiAnalysisError(
       "empty_result",
-      "模型返回了 JSON，但核心术语、重点句式和双语对照都是空的。请换一段更完整的英文论文文本，或检查模型输出。"
+      "模型返回了 JSON，但核心术语、重点句式和双语对照都是空的。系统已尝试用严格 schema 修复，仍未得到可展示内容。请检查模型输出或稍后重试。"
     );
   }
 
@@ -291,8 +463,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function readArray(value: unknown) {
+function readValueByKeys(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+}
+
+function readArrayByKeys(record: Record<string, unknown>, keys: string[]) {
+  const value = readValueByKeys(record, keys);
   return Array.isArray(value) ? value : [];
+}
+
+function readStringByKeys(
+  record: Record<string, unknown>,
+  keys: string[],
+  fallback = ""
+) {
+  return readString(readValueByKeys(record, keys), fallback);
+}
+
+function readOptionalStringByKeys(record: Record<string, unknown>, keys: string[]) {
+  return readOptionalString(readValueByKeys(record, keys));
 }
 
 function readString(value: unknown, fallback = "") {
