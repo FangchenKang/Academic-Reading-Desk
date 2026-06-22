@@ -46,7 +46,7 @@ export const phraseTypeLabels: Record<VocabularyPhraseType | "unknown", string> 
   adjective: "形容词",
   adverb: "副词",
   collocation: "搭配",
-  transition: "衔接表达",
+  transition: "连接表达",
   other: "其他",
   unknown: "未分类"
 };

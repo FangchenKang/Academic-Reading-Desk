@@ -17,6 +17,9 @@ export function VocabularyList({
   vocabulary: VocabularyItem[];
   mode: ReadingMode;
 }) {
+  const visibleVocabulary = vocabulary.slice(0, 12);
+  const hiddenCount = Math.max(0, vocabulary.length - visibleVocabulary.length);
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -36,59 +39,66 @@ export function VocabularyList({
         </Button>
       </div>
 
-      {vocabulary.length === 0 ? (
+      {visibleVocabulary.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-500">
           暂无学术表达词汇。旧记录可能没有这个字段，重新解析后会自动补充。
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {vocabulary.map((item, index) => (
-            <article
-              key={`${item.word}-${index}`}
-              className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-950">
-                    {item.word}
-                  </p>
-                  {mode !== "english" ? (
-                    <p
-                      className={cn(
-                        "mt-1 text-sm",
-                        mode === "chinese"
-                          ? "font-medium text-teal-700"
-                          : "text-slate-600"
-                      )}
-                    >
-                      {item.translation}
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            {visibleVocabulary.map((item, index) => (
+              <article
+                key={`${item.word}-${index}`}
+                className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-950">
+                      {item.word}
                     </p>
-                  ) : null}
+                    {mode !== "english" ? (
+                      <p
+                        className={cn(
+                          "mt-1 text-sm",
+                          mode === "chinese"
+                            ? "font-medium text-teal-700"
+                            : "text-slate-600"
+                        )}
+                      >
+                        {item.translation}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Badge tone="teal" className="shrink-0">
+                    {phraseTypeLabels[item.phraseType ?? "other"]}
+                  </Badge>
                 </div>
-                <Badge tone="teal" className="shrink-0">
-                  {phraseTypeLabels[item.phraseType ?? "other"]}
-                </Badge>
-              </div>
 
-              {item.explanation && mode !== "english" ? (
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">
-                  {item.explanation}
-                </p>
-              ) : null}
+                {item.explanation && mode !== "english" ? (
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">
+                    {item.explanation}
+                  </p>
+                ) : null}
 
-              {item.example ? (
-                <p
-                  className={cn(
-                    "mt-2 border-l-2 border-emerald-200 pl-3 text-xs leading-5",
-                    mode === "chinese" ? "text-slate-500" : "text-slate-700"
-                  )}
-                >
-                  {item.example}
-                </p>
-              ) : null}
-            </article>
-          ))}
-        </div>
+                {item.example ? (
+                  <p
+                    className={cn(
+                      "mt-2 border-l-2 border-emerald-200 pl-3 text-xs leading-5",
+                      mode === "chinese" ? "text-slate-500" : "text-slate-700"
+                    )}
+                  >
+                    {item.example}
+                  </p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+          {hiddenCount > 0 ? (
+            <p className="mt-3 text-xs text-slate-400">
+              已展示前 12 个表达，另外 {hiddenCount} 个可在词库中心查看。
+            </p>
+          ) : null}
+        </>
       )}
     </section>
   );
