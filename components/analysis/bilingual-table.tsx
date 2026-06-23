@@ -1,6 +1,7 @@
 "use client";
 
-import { CopyButton } from "@/components/shared/copy-button";
+import { Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AnalysisResult, ReadingMode } from "@/types/analysis";
 
@@ -11,72 +12,100 @@ export function BilingualTable({
 }: {
   items: AnalysisResult["bilingual"];
   mode: ReadingMode;
-  onCopied: () => void;
+  onCopied: (message: string) => void;
 }) {
-  const copyText = items.map((item) => `${item.en}\n${item.zh}`).join("\n\n");
-  const englishOnly = mode === "english";
+  const copyText = items.map((item) => formatBilingualItem(item, mode)).join("\n\n");
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-slate-950">四、双语对照</h3>
+          <h3 className="text-base font-semibold text-slate-950">一、双语精读</h3>
           <p className="mt-1 text-xs text-slate-500">
-            {englishOnly ? "当前仅显示英文原句" : "英文原句与中文翻译并列阅读"}
+            逐句拆解英文原文，先读懂文本再积累术语
           </p>
         </div>
-        <CopyButton text={copyText} label="复制全部" onCopied={onCopied} />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            await navigator.clipboard.writeText(copyText);
+            onCopied("双语精读全文已复制");
+          }}
+        >
+          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+          复制全文
+        </Button>
       </div>
 
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-500">
-          模型没有返回双语对照。可以重新解析，或检查模型是否按 JSON 字段返回
-          bilingual。
+          暂无逐句解析，请点击解析文本生成。
         </div>
       ) : (
-        <div
-          className={cn(
-            "overflow-hidden rounded-lg border border-slate-200",
-            englishOnly ? "grid grid-cols-1" : "grid grid-cols-2"
-          )}
-        >
-          <div className="bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-            英文原句
-          </div>
-          {!englishOnly ? (
-            <div className="border-l border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-              中文翻译
-            </div>
-          ) : null}
-
+        <div className="space-y-3">
           {items.map((item, index) => (
-            <div key={`${item.en}-${index}`} className="contents">
-              <div
-                className={cn(
-                  "border-t border-slate-200 px-3 py-3 text-sm leading-6",
-                  mode === "chinese" ? "text-slate-500" : "text-slate-800",
-                  index % 2 === 1 && "bg-slate-50/50"
-                )}
-              >
-                {item.en}
+            <article
+              key={`${item.en}-${index}`}
+              className="group relative flex w-full gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3 transition-colors hover:border-teal-100 hover:bg-white"
+            >
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-[11px] font-bold text-white">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+
+              <div className="min-w-0 flex-1 pr-9">
+                {mode !== "chinese" ? (
+                  <p
+                    className={cn(
+                      "whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-900",
+                      mode === "english" && "text-slate-950"
+                    )}
+                  >
+                    {item.en}
+                  </p>
+                ) : null}
+
+                {mode === "bilingual" ? (
+                  <p className="mt-3 whitespace-pre-wrap break-words border-t border-slate-100 pt-3 text-sm leading-7 text-slate-600">
+                    {item.zh}
+                  </p>
+                ) : null}
+
+                {mode === "chinese" ? (
+                  <p className="whitespace-pre-wrap break-words text-sm font-medium leading-7 text-teal-800">
+                    {item.zh}
+                  </p>
+                ) : null}
               </div>
-              {!englishOnly ? (
-                <div
-                  className={cn(
-                    "border-l border-t border-slate-200 px-3 py-3 text-sm leading-6",
-                    mode === "chinese"
-                      ? "font-medium text-teal-800"
-                      : "text-slate-700",
-                    index % 2 === 1 && "bg-slate-50/50"
-                  )}
-                >
-                  {item.zh}
-                </div>
-              ) : null}
-            </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-2 h-7 w-7 text-slate-400 opacity-80 hover:text-teal-700 group-hover:opacity-100"
+                title="复制当前句"
+                aria-label={`复制第 ${index + 1} 句`}
+                onClick={async () => {
+                  await navigator.clipboard.writeText(formatBilingualItem(item, mode));
+                  onCopied("单句已复制");
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+              </Button>
+            </article>
           ))}
         </div>
       )}
     </section>
   );
+}
+
+function formatBilingualItem(
+  item: AnalysisResult["bilingual"][number],
+  mode: ReadingMode
+) {
+  if (mode === "english") return item.en;
+  if (mode === "chinese") return item.zh;
+  return `${item.en}\n${item.zh}`;
 }

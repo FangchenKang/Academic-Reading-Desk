@@ -61,12 +61,17 @@ export function AnalysisPanel({
         {!loading && !error && !result ? (
           <EmptyState
             title="暂无解析结果"
-            description="点击左侧“解析文本”后，这里会展示核心术语、学术表达词汇、重点句式、双语对照和自动笔记。"
+            description="点击左侧“解析文本”后，这里会展示双语精读、核心术语、学术表达词汇、重点句式和自动笔记。"
           />
         ) : null}
 
         {!loading && !error && result && !collapsed ? (
           <div className="space-y-4">
+            <BilingualTable
+              items={result.bilingual}
+              mode={mode}
+              onCopied={onCopied}
+            />
             <TermGrid
               terms={result.terms}
               mode={mode}
@@ -74,11 +79,6 @@ export function AnalysisPanel({
             />
             <VocabularyList vocabulary={result.vocabulary ?? []} mode={mode} />
             <PatternList patterns={result.patterns} mode={mode} />
-            <BilingualTable
-              items={result.bilingual}
-              mode={mode}
-              onCopied={() => onCopied("双语内容已复制")}
-            />
             <AutoNoteCard
               note={result.note}
               mode={mode}

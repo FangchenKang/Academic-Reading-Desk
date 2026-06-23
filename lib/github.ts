@@ -63,7 +63,7 @@ export function recordToMarkdown(record: ReadingRecord) {
     }
 
     lines.push(
-      "## 双语对照",
+      "## 双语精读",
       "",
       "| 英文原句 | 中文翻译 |",
       "|---|---|---|",

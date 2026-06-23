@@ -224,8 +224,12 @@ export function createMockAnalysisResult(
     ],
     bilingual: [
       {
-        en: "Perceived transparency and procedural fairness of algorithmic decision-making significantly enhance trust.",
-        zh: "感知到的透明度和程序公正性能够显著提升信任。"
+        en: "This study investigates how algorithmic governance influences public trust in governmental institutions.",
+        zh: "本研究考察算法治理如何影响公众对政府机构的信任。"
+      },
+      {
+        en: "Drawing on a survey of 1,204 participants and multiple case studies, we find that perceived transparency and procedural fairness of algorithmic decision-making significantly enhance trust.",
+        zh: "基于对 1,204 名参与者的调查和多个案例研究，本文发现，算法决策的感知透明度和程序公平能够显著提升信任。"
       },
       {
         en: "Opacity and lack of accountability erode it.",
@@ -238,6 +242,10 @@ export function createMockAnalysisResult(
       {
         en: "Fostering trust in the digital age requires not only technical accuracy but also robust governance mechanisms.",
         zh: "在数字时代培育信任，不仅需要技术准确性，还需要健全的治理机制。"
+      },
+      {
+        en: "These mechanisms should embed accountability and promote citizen engagement.",
+        zh: "这些机制应当嵌入问责要求，并促进公民参与。"
       }
     ],
     note:

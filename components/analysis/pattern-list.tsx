@@ -16,7 +16,7 @@ export function PatternList({
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-slate-950">三、重点句式</h3>
+          <h3 className="text-base font-semibold text-slate-950">四、重点句式</h3>
           <p className="mt-1 text-xs text-slate-500">
             识别可迁移到论文写作中的功能句
           </p>

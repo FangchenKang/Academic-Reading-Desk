@@ -25,7 +25,7 @@ export function VocabularyList({
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-slate-950">
-            二、学术表达词汇
+            三、学术表达词汇
           </h3>
           <p className="mt-1 text-xs text-slate-500">
             从原文中提取可迁移到论文写作中的表达
