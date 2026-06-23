@@ -48,11 +48,13 @@ export function ReadingWorkbench() {
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [lastEditedAt, setLastEditedAt] = useState(() => new Date().toISOString());
   const [mode, setMode] = useState<ReadingMode>("bilingual");
+  const [resultVersion, setResultVersion] = useState(0);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [hasSavedRecord, setHasSavedRecord] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [githubConfigured, setGithubConfigured] = useState<boolean | null>(null);
   const [syncedToGithub, setSyncedToGithub] = useState(false);
   const [githubPath, setGithubPath] = useState<string | undefined>();
   const [collapsed, setCollapsed] = useState(false);
@@ -62,6 +64,23 @@ export function ReadingWorkbench() {
   } | null>(null);
 
   const wordCount = useMemo(() => countEnglishWords(originalText), [originalText]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/github/status")
+      .then((response) => response.json() as Promise<{ configured?: boolean }>)
+      .then((payload) => {
+        if (!cancelled) setGithubConfigured(Boolean(payload.configured));
+      })
+      .catch(() => {
+        if (!cancelled) setGithubConfigured(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +107,7 @@ export function ReadingWorkbench() {
         setOriginalText(record.originalText);
         setAnalysisResult(record.analysisResult);
         setAnalysisError(null);
+        setResultVersion((version) => version + 1);
         setCreatedAt(record.createdAt);
         setLastEditedAt(record.updatedAt);
         setHasSavedRecord(true);
@@ -193,6 +213,7 @@ export function ReadingWorkbench() {
       const now = new Date().toISOString();
       setAnalysisResult(payload.result);
       setAnalysisError(null);
+      setResultVersion((version) => version + 1);
       const savedRecord = await saveRecord({
         ...buildRecord(now),
         analysisResult: payload.result,
@@ -208,7 +229,7 @@ export function ReadingWorkbench() {
       setGithubPath(undefined);
       setLastEditedAt(now);
       setSaveStatus("saved");
-      showToast("解析完成，已保存到本地");
+      showToast("解析完成，本地已保存");
     } catch (error) {
       const analyzeError = normalizeAnalyzeError(error);
       setAnalysisError(analyzeError);
@@ -239,6 +260,7 @@ export function ReadingWorkbench() {
     setOriginalText("");
     setAnalysisResult(null);
     setAnalysisError(null);
+    setResultVersion((version) => version + 1);
     setCreatedAt(now);
     setLastEditedAt(now);
     setHasSavedRecord(false);
@@ -269,6 +291,7 @@ export function ReadingWorkbench() {
       }
 
       const now = new Date().toISOString();
+      setGithubConfigured(true);
       setSyncedToGithub(true);
       setGithubPath(payload.path);
       const savedRecord = await saveRecord({
@@ -287,6 +310,9 @@ export function ReadingWorkbench() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "GitHub 同步失败，请稍后重试";
+      if (message.includes("GitHub 同步未启用")) {
+        setGithubConfigured(false);
+      }
       showToast(message, "error");
     } finally {
       setSyncing(false);
@@ -305,11 +331,18 @@ export function ReadingWorkbench() {
     );
   }
 
+  const githubStatusSynced = githubConfigured !== false && syncedToGithub;
+
   return (
     <AppShell
       mainClassName="overflow-hidden"
       topbar={
-        <Topbar onNew={handleNew} onSync={handleSync} syncing={syncing} />
+        <Topbar
+          onNew={handleNew}
+          onSync={handleSync}
+          syncing={syncing}
+          syncDisabled={githubConfigured === false}
+        />
       }
     >
       <div className="grid h-full min-h-0 grid-cols-[minmax(420px,0.43fr)_minmax(540px,0.57fr)] gap-5 overflow-hidden">
@@ -354,7 +387,8 @@ export function ReadingWorkbench() {
         <AnalysisPanel
           result={analysisResult}
           error={analysisError}
-          mode={mode}
+          defaultMode={mode}
+          resetKey={resultVersion}
           loading={analyzing}
           collapsed={collapsed}
           onCollapsedChange={setCollapsed}
@@ -373,11 +407,11 @@ export function ReadingWorkbench() {
             }
             aria-hidden="true"
           />
-          {hasSavedRecord ? "保存到本地" : "未保存为本地记录"}
+          {getLocalStatusLabel(hasSavedRecord, saveStatus)}
         </span>
         <span className="h-3 w-px bg-slate-200" />
         <span className="inline-flex items-center gap-1.5">
-          {syncedToGithub ? (
+          {githubStatusSynced ? (
             <CheckCircle2
               className="h-3.5 w-3.5 text-emerald-600"
               aria-hidden="true"
@@ -388,13 +422,33 @@ export function ReadingWorkbench() {
               aria-hidden="true"
             />
           )}
-          {syncedToGithub ? `已同步到 GitHub：${githubPath}` : "GitHub 未配置或待同步"}
+          {getGithubStatusLabel({
+            configured: githubConfigured,
+            synced: githubStatusSynced
+          })}
         </span>
       </div>
 
       <Toast message={toast?.message ?? null} tone={toast?.tone} />
     </AppShell>
   );
+}
+
+function getLocalStatusLabel(hasSavedRecord: boolean, saveStatus: SaveStatus) {
+  if (saveStatus === "saving") return "本地保存中";
+  if (saveStatus === "error") return "本地保存失败";
+  return hasSavedRecord ? "本地已保存" : "本地未保存";
+}
+
+function getGithubStatusLabel({
+  configured,
+  synced
+}: {
+  configured: boolean | null;
+  synced: boolean;
+}) {
+  if (configured === false) return "GitHub 未配置";
+  return synced ? "已同步到 GitHub" : "待同步 GitHub";
 }
 
 function createAnalyzeError(payload: AnalyzeErrorPayload) {

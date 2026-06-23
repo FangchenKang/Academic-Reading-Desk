@@ -17,7 +17,8 @@ import type {
 export function AnalysisPanel({
   result,
   error,
-  mode,
+  defaultMode,
+  resetKey,
   loading,
   collapsed,
   onCollapsedChange,
@@ -26,7 +27,8 @@ export function AnalysisPanel({
 }: {
   result: AnalysisResult | null;
   error: AnalysisErrorState | null;
-  mode: ReadingMode;
+  defaultMode: ReadingMode;
+  resetKey: number;
   loading: boolean;
   collapsed: boolean;
   onCollapsedChange: (value: boolean) => void;
@@ -68,20 +70,23 @@ export function AnalysisPanel({
         {!loading && !error && result && !collapsed ? (
           <div className="space-y-4">
             <BilingualTable
+              key={`bilingual-${resetKey}`}
               items={result.bilingual}
-              mode={mode}
+              defaultMode={defaultMode}
               onCopied={onCopied}
             />
             <TermGrid
+              key={`terms-${resetKey}`}
               terms={result.terms}
-              mode={mode}
               onCopied={() => onCopied("术语已复制")}
             />
-            <VocabularyList vocabulary={result.vocabulary ?? []} mode={mode} />
-            <PatternList patterns={result.patterns} mode={mode} />
+            <VocabularyList
+              key={`vocabulary-${resetKey}`}
+              vocabulary={result.vocabulary ?? []}
+            />
+            <PatternList key={`patterns-${resetKey}`} patterns={result.patterns} />
             <AutoNoteCard
               note={result.note}
-              mode={mode}
               onChange={onNoteChange}
               onCopied={() => onCopied("笔记已复制")}
             />

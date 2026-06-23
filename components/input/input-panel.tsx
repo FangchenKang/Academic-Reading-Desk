@@ -71,7 +71,12 @@ export function InputPanel({
             <Zap className="h-4 w-4" aria-hidden="true" />
             {analyzing ? "解析中……" : "解析文本"}
           </Button>
-          <ModeToggle value={mode} onChange={onModeChange} />
+          <div>
+            <p className="mb-1 text-[11px] font-medium text-slate-500">
+              默认显示偏好
+            </p>
+            <ModeToggle value={mode} onChange={onModeChange} />
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">

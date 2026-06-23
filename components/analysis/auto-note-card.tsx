@@ -3,16 +3,13 @@
 import { NotebookPen } from "lucide-react";
 import { CopyButton } from "@/components/shared/copy-button";
 import { Textarea } from "@/components/ui/textarea";
-import type { ReadingMode } from "@/types/analysis";
 
 export function AutoNoteCard({
   note,
-  mode,
   onChange,
   onCopied
 }: {
   note: string;
-  mode: ReadingMode;
   onChange: (value: string) => void;
   onCopied: () => void;
 }) {
@@ -35,11 +32,7 @@ export function AutoNoteCard({
         <Textarea
           value={note}
           onChange={(event) => onChange(event.target.value)}
-          className={
-            mode === "english"
-              ? "min-h-28 border-amber-100 bg-white/70 text-slate-500"
-              : "min-h-28 border-amber-100 bg-white text-slate-800"
-          }
+          className="min-h-28 border-amber-100 bg-white text-slate-800"
         />
       </div>
     </section>

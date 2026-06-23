@@ -1,17 +1,40 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Layers3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { AnalysisResult, ReadingMode } from "@/types/analysis";
+import type { AnalysisResult } from "@/types/analysis";
+
+type Pattern = AnalysisResult["patterns"][number];
 
 export function PatternList({
-  patterns,
-  mode
+  patterns
 }: {
   patterns: AnalysisResult["patterns"];
-  mode: ReadingMode;
 }) {
+  const patternIds = useMemo(() => patterns.map(getPatternId), [patterns]);
+  const [expandedPatternIds, setExpandedPatternIds] = useState<Set<string>>(
+    new Set()
+  );
+  const allExpanded =
+    patternIds.length > 0 && expandedPatternIds.size === patternIds.length;
+
+  function togglePattern(id: string) {
+    setExpandedPatternIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function setAllPatterns(expanded: boolean) {
+    setExpandedPatternIds(expanded ? new Set(patternIds) : new Set());
+  }
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -21,9 +44,14 @@ export function PatternList({
             识别可迁移到论文写作中的功能句
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setAllPatterns(!allExpanded)}
+        >
           <Layers3 className="h-3.5 w-3.5" aria-hidden="true" />
-          更多句式
+          {allExpanded ? "收起模板" : "展开模板"}
         </Button>
       </div>
 
@@ -34,49 +62,52 @@ export function PatternList({
         </div>
       ) : (
         <div className="space-y-3">
-          {patterns.map((item, index) => (
-            <div
-              key={item.type || index}
-              className="grid grid-cols-[34px_1fr] gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3"
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-600 text-xs font-bold text-white">
-                {index + 1}
-              </span>
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-900">{item.type}</p>
-                  {item.reusableTemplate ? (
-                    <span className="text-xs text-blue-600">可复用模板</span>
-                  ) : null}
-                </div>
-                {mode !== "english" ? (
-                  <p
-                    className={cn(
-                      "mt-1 text-sm leading-6",
-                      mode === "chinese" ? "text-slate-800" : "text-slate-600"
-                    )}
-                  >
+          {patterns.map((item, index) => {
+            const id = getPatternId(item, index);
+            const expanded = expandedPatternIds.has(id);
+
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => togglePattern(id)}
+                className="grid w-full grid-cols-[34px_1fr] gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-left transition-colors hover:border-teal-100 hover:bg-white"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-600 text-xs font-bold text-white">
+                  {index + 1}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {item.type}
+                    </p>
+                    {item.reusableTemplate ? (
+                      <span className="text-xs text-blue-600">
+                        {expanded ? "隐藏模板" : "查看模板"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
                     {item.description}
                   </p>
-                ) : null}
-                <p
-                  className={cn(
-                    "mt-2 rounded-lg bg-white px-3 py-2 text-sm leading-6",
-                    mode === "chinese" ? "text-slate-500" : "text-slate-800"
-                  )}
-                >
-                  {item.example}
-                </p>
-                {mode !== "chinese" && item.reusableTemplate ? (
-                  <p className="mt-2 text-xs leading-5 text-slate-500">
-                    Template: {item.reusableTemplate}
+                  <p className="mt-2 rounded-lg bg-white px-3 py-2 text-sm leading-6 text-slate-800">
+                    {item.example}
                   </p>
-                ) : null}
-              </div>
-            </div>
-          ))}
+                  {expanded && item.reusableTemplate ? (
+                    <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                      Template: {item.reusableTemplate}
+                    </p>
+                  ) : null}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </section>
   );
+}
+
+function getPatternId(item: Pattern, index: number) {
+  return `${index}-${item.type || item.example}`;
 }

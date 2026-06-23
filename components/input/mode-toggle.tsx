@@ -4,9 +4,9 @@ import type { ReadingMode } from "@/types/analysis";
 import { cn } from "@/lib/utils";
 
 const modes: { value: ReadingMode; label: string }[] = [
-  { value: "english", label: "英文模式" },
-  { value: "bilingual", label: "双语模式" },
-  { value: "chinese", label: "中文模式" }
+  { value: "english", label: "英文优先" },
+  { value: "bilingual", label: "双语默认" },
+  { value: "chinese", label: "中文优先" }
 ];
 
 export function ModeToggle({
